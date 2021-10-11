@@ -20,6 +20,36 @@ import java.util.Map;
 
 public class SpotifyBestSongWeeklyPoll {
 
+	private final String clientID;
+	private final String cliendIDsecret;
+
+	private static SpotifyBestSongWeeklyPoll instance;
+
+	public static SpotifyBestSongWeeklyPoll getInstance() {
+		return instance;
+	}
+
+	public static SpotifyBestSongWeeklyPoll open(String clientID, String clientIDsecret) throws IllegalStateException {
+
+		if(instance != null)
+			throw new IllegalStateException();
+
+		return instance = new SpotifyBestSongWeeklyPoll(clientID, clientIDsecret);
+	}
+
+	public SpotifyBestSongWeeklyPoll(String clientID, String clientIDsecret) {
+		this.clientID = clientID;
+		this.cliendIDsecret = clientIDsecret;
+	}
+
+	public String getCliendIDsecret() {
+		return cliendIDsecret;
+	}
+
+	public String getClientID() {
+		return clientID;
+	}
+
 	public static void main(String[] args) {
 
 		Mono<Void> client = DiscordClient.create(args[0])
@@ -37,9 +67,40 @@ public class SpotifyBestSongWeeklyPoll {
 							})
 							.then();
 
+					Mono<Void> cid = gatewayDiscordClient.on(MessageCreateEvent.class, event -> {
+								Message message = event.getMessage();
+								String[] command = message.getContent()
+										.split(" ");
+
+
+								if(command[0].equalsIgnoreCase("!client")) {
+
+									if(command.length <= 2)
+										return message.getChannel()
+												.flatMap(messageChannel -> messageChannel.createMessage(
+														"Insert clientID and secrest clientID"));
+
+									try {
+										SpotifyBestSongWeeklyPoll.open(command[1],
+												command[2]);
+									} catch(IllegalStateException e) {
+										return message.getChannel()
+												.flatMap(messageChannel -> messageChannel.createMessage(
+														"clientID and secret cliendID already inserted!"));
+									}
+
+									return message.getChannel().flatMap(messageChannel -> messageChannel.createMessage("clientID and secredt clientID inserted correctly!"));
+								}
+								return Mono.empty();
+							})
+							.then();
+
 					Mono<Void> comm = gatewayDiscordClient.on(MessageCreateEvent.class, event -> {
 
+								SpotifyBestSongWeeklyPoll instance = SpotifyBestSongWeeklyPoll.getInstance();
+
 								Message message = event.getMessage();
+
 								String[] command = message.getContent()
 										.split(" ");
 
@@ -49,13 +110,18 @@ public class SpotifyBestSongWeeklyPoll {
 
 								if(command[0].equalsIgnoreCase("!contest")) {
 
+									if(instance == null)
+										return message.getChannel()
+												.flatMap(messageChannel -> messageChannel.createMessage(
+														"Insert clientID and secret clientID first"));
+
 									if(command.length <= 2)
 										return message.getChannel()
 												.flatMap(messageChannel -> messageChannel.createMessage("Insert playlist id!"));
 
 									playlist = command[1];
-									clientID = command[2];
-									clientIDSecret = command[3];
+									clientID = instance.getClientID();
+									clientIDSecret = instance.getCliendIDsecret();
 
 									try {
 
@@ -95,38 +161,6 @@ public class SpotifyBestSongWeeklyPoll {
 										System.out.println(objectLogin);
 										String accessToken = objectLogin.getString("access_token");
 										System.out.println("Token: " + accessToken);
-
-										/*
-
-
-										String params = "grant_type=refresh_token&refresh_token=" + token;
-										byte[] postData = params.getBytes(StandardCharsets.UTF_8);
-										String clientsIDs = clientID + ":" + clientIDSecret;
-										byte[] access = clientsIDs.getBytes(StandardCharsets.UTF_8);
-										int postDataLenght = postData.length;
-										URL urlRefresh = new URL("https://accounts.spotify.com/api/token");
-										HttpURLConnection connRefresh = (HttpURLConnection) urlRefresh.openConnection();
-										connRefresh.setDoOutput(true);
-										connRefresh.setRequestMethod("POST");
-										connRefresh.setRequestProperty("Content-Type", "application/x-www-form-urlencoded");
-										connRefresh.setRequestProperty("Authorization", "Basic " +
-												java.util.Base64.getEncoder().encodeToString(access));
-										connRefresh.setRequestProperty("charset", "utf-8");
-										connRefresh.setRequestProperty("Content-Lenght", Integer.toString(postDataLenght));
-										try(DataOutputStream wr = new DataOutputStream(connRefresh.getOutputStream())) {
-											wr.write(postData);
-										}
-										BufferedReader inRefresh = new BufferedReader(new InputStreamReader(connRefresh.getInputStream()));
-										String outputRefresh;
-
-										StringBuffer responseRefresh = new StringBuffer();
-										while((outputRefresh = inRefresh.readLine()) != null) {
-											responseRefresh.append(outputRefresh);
-										}
-										System.out.println("Refresh: " + responseRefresh);
-										inRefresh.close();
-										*/
-
 
 										URL url = new URL("https://api.spotify.com/v1/playlists/" + playlist +
 												"/tracks?fields=items(added_by.id,track.name)");
@@ -174,15 +208,12 @@ public class SpotifyBestSongWeeklyPoll {
 
 											try {
 
-												URL urlUser = new URL(
-														"https://api.spotify.com/v1/users/" + id);
+												URL urlUser = new URL("https://api.spotify.com/v1/users/" + id);
 												HttpURLConnection connectionUser = (HttpURLConnection) urlUser.openConnection();
 												connectionUser.setRequestProperty("Content-Type", "application/json");
-												connectionUser.setRequestProperty("Authorization",
-														"Bearer " + accessToken);
+												connectionUser.setRequestProperty("Authorization", "Bearer " + accessToken);
 												connectionUser.setRequestMethod("GET");
-												BufferedReader inUser = new BufferedReader(new InputStreamReader(
-														connectionUser.getInputStream()));
+												BufferedReader inUser = new BufferedReader(new InputStreamReader(connectionUser.getInputStream()));
 
 												String outputUser;
 
@@ -201,7 +232,7 @@ public class SpotifyBestSongWeeklyPoll {
 														.append(name)
 														.append("\n");
 
-											}catch(Exception e) {
+											} catch(Exception e) {
 												System.out.println(e.getMessage());
 											}
 										});
@@ -222,7 +253,7 @@ public class SpotifyBestSongWeeklyPoll {
 							})
 							.then();
 
-					return mess.and(comm);
+					return mess.and(comm).and(cid);
 				});
 		client.block();
 
