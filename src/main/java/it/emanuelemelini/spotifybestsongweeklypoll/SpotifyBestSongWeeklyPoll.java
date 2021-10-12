@@ -262,6 +262,14 @@ public class SpotifyBestSongWeeklyPoll {
 											.flatMap(channel -> channel.createMessage("Start contest first!"));
 								}
 
+								if(message.getReactions()
+										.stream()
+										.noneMatch(Reaction::selfReacted))
+									return event.getMessage()
+											.getChannel()
+											.flatMap(channel -> channel.createMessage("Contest already closed!"));
+
+
 								List<Reaction> reactions = message.getReactions();
 
 								StringBuilder reacmess = new StringBuilder();
@@ -295,6 +303,9 @@ public class SpotifyBestSongWeeklyPoll {
 											.append(value - 1)
 											.append("\n");
 								});
+
+								message.removeAllReactions()
+										.block();
 
 								return event.getMessage()
 										.getChannel()
