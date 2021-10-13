@@ -12,6 +12,10 @@ import discord4j.core.spec.EmbedCreateSpec;
 import discord4j.rest.util.Color;
 import org.json.JSONArray;
 import org.json.JSONObject;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.CommandLineRunner;
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
@@ -25,10 +29,12 @@ import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 
-public class SpotifyBestSongWeeklyPoll {
+@SpringBootApplication
+public class SpotifyBestSongWeeklyPoll implements CommandLineRunner {
 
 	private final String clientID;
 	private final String cliendIDsecret;
+	private final String token;
 
 	public final String[] emojisss = {
 			"\uD83C\uDDE6", //A
@@ -58,21 +64,25 @@ public class SpotifyBestSongWeeklyPoll {
 
 	private Snowflake messID;
 
+	private boolean type = false;
+
 	public static SpotifyBestSongWeeklyPoll getInstance() {
 		return instance;
 	}
 
-	public static SpotifyBestSongWeeklyPoll open(String clientID, String clientIDsecret) throws IllegalStateException {
+	public static SpotifyBestSongWeeklyPoll open(String clientID, String clientIDsecret, String token) throws IllegalStateException {
 
 		if(instance != null)
 			throw new IllegalStateException();
 
-		return instance = new SpotifyBestSongWeeklyPoll(clientID, clientIDsecret);
+		return instance = new SpotifyBestSongWeeklyPoll(clientID, clientIDsecret, token);
 	}
 
-	public SpotifyBestSongWeeklyPoll(String clientID, String clientIDsecret) {
+	public SpotifyBestSongWeeklyPoll(@Value("${CLIENT_ID}") String clientID,
+			@Value("${CLIENT_ID_SECRET}") String clientIDsecret, @Value("${DISCORD_TOKEN}") String token) {
 		this.clientID = clientID;
 		this.cliendIDsecret = clientIDsecret;
+		this.token = token;
 	}
 
 	public String getCliendIDsecret() {
@@ -83,10 +93,11 @@ public class SpotifyBestSongWeeklyPoll {
 		return clientID;
 	}
 
-	public static void main(String[] args) {
+	public void mainSpotify() {
 
-		Mono<Void> client = DiscordClient.create(args[0])
+		Mono<Void> client = DiscordClient.create(token)
 				.withGateway((GatewayDiscordClient gatewayDiscordClient) -> {
+
 					Mono<Void> mess = gatewayDiscordClient.on(MessageCreateEvent.class, event -> {
 
 								Message message = event.getMessage();
@@ -125,6 +136,7 @@ public class SpotifyBestSongWeeklyPoll {
 							})
 							.then();
 
+					/*
 					Mono<Void> cid = gatewayDiscordClient.on(MessageCreateEvent.class, event -> {
 								Message message = event.getMessage();
 								String[] command = message.getContent()
@@ -133,13 +145,30 @@ public class SpotifyBestSongWeeklyPoll {
 
 								if(command[0].equalsIgnoreCase("!client")) {
 
-									if(command.length <= 2)
+									if(command.length <= 2 && args.length == 1)
 										return message.getChannel()
 												.flatMap(messageChannel -> messageChannel.createMessage(
 														"Insert clientID and secrest clientID"));
 
+									SpotifyBestSongWeeklyPoll instance = SpotifyBestSongWeeklyPoll.getInstance();
+
+									if(instance == null)
+										return event.getMessage()
+												.getChannel()
+												.flatMap(messageChannel -> messageChannel.createMessage(
+														"Insert clientID and secret clientID first"));
+
+									//TODO: usare db
 									try {
-										SpotifyBestSongWeeklyPoll.open(command[1], command[2]);
+										String clientID = instance.getClientID();
+										String clientIDs = instance.getCliendIDsecret();
+
+										if(args.length == 1) {
+											clientID = command[1];
+											clientIDs = command[2];
+										}
+
+										SpotifyBestSongWeeklyPoll.open(clientID, clientIDs);
 									} catch(IllegalStateException e) {
 										return message.getChannel()
 												.flatMap(messageChannel -> messageChannel.createMessage(
@@ -154,9 +183,11 @@ public class SpotifyBestSongWeeklyPoll {
 							})
 							.then();
 
+					 */
+
 					Mono<Void> comm = gatewayDiscordClient.on(MessageCreateEvent.class, event -> {
 
-								SpotifyBestSongWeeklyPoll instance = SpotifyBestSongWeeklyPoll.getInstance();
+								//SpotifyBestSongWeeklyPoll instance = SpotifyBestSongWeeklyPoll.getInstance();
 
 								Message message = event.getMessage();
 
@@ -169,20 +200,26 @@ public class SpotifyBestSongWeeklyPoll {
 
 								if(command[0].equalsIgnoreCase("!contest")) {
 
+									/*
 									if(instance == null)
 										return message.getChannel()
 												.flatMap(messageChannel -> messageChannel.createMessage(
 														"Insert clientID and secret clientID first"));
 
+
+									 */
 									if(command.length < 2)
 										return message.getChannel()
 												.flatMap(messageChannel -> messageChannel.createMessage("Insert playlist id!"));
 
 									playlist = command[1];
 
-									mapResult = instance.getPlaylist(playlist);
+									//mapResult = instance.getPlaylist(playlist);
 
-									String[] hrefthumb = instance.getPlaylistSpec(playlist);
+									mapResult = getPlaylist(playlist);
+
+									//String[] hrefthumb = instance.getPlaylistSpec(playlist);
+									String[] hrefthumb = getPlaylistSpec(playlist);
 
 									String thumbnail = hrefthumb[0];
 									String href = hrefthumb[1];
@@ -191,17 +228,24 @@ public class SpotifyBestSongWeeklyPoll {
 
 									AtomicInteger atEmbed = new AtomicInteger(0);
 
+									//TODO: check canzoni non vecchie
+									//TODO: mettere regole nel messaggio
+									//TODO: usare Jackson per il JSON
+
 									mapResult.forEach((nameUser, name) -> {
-										fields.add(EmbedCreateFields.Field.of(instance.emojisss[atEmbed.get()] + " " + name,
+										//instance.emojisss[atEmbed.get()]
+										fields.add(EmbedCreateFields.Field.of(emojisss[atEmbed.get()] + " " + name,
 												nameUser,
 												true));
 										if(atEmbed.get() % 2 == 1)
-											fields.add(EmbedCreateFields.Field.of("\u200b", "\u200b", false));
-										instance.songReaction.put(instance.emojisss[atEmbed.get()], name);
+											fields.add(EmbedCreateFields.Field.of("\u200b", "\u200b", true));
+										//instance.songReaction.put(instance.emojisss[atEmbed.get()], name);
+										songReaction.put(emojisss[atEmbed.get()], name);
 										atEmbed.getAndIncrement();
 									});
 
-									System.out.println(instance.songReaction);
+									//System.out.println(instance.songReaction);
+									System.out.println(songReaction);
 
 									EmbedCreateSpec embed = EmbedCreateSpec.builder()
 											.title("Weekly poll")
@@ -209,7 +253,8 @@ public class SpotifyBestSongWeeklyPoll {
 													"https://github.com/EmanueleMelini",
 													"https://avatars.githubusercontent.com/u/73402425?v=4"))
 											.color(Color.GREEN)
-											.description("Votazione settimanale della miglior canzone nella playlist di EXP!")
+											.description(
+													"Votazione settimanale della miglior canzone nella playlist di EXP!\nRegole:\n - Si vota ogni mercoledì la canzone preferita più \"originale\"\n - Chi vince una votazione ha la possibilità di inserire una canzone aggiuntiva al prossimo inserimento\n - Le canzoni inserite dal vincitore della settimana precedente non possono essere votate")
 											.addAllFields(fields)
 											.thumbnail(thumbnail)
 											.url(href)
@@ -221,9 +266,11 @@ public class SpotifyBestSongWeeklyPoll {
 									return message.getChannel()
 											.flatMap(messageChannel -> Mono.from(messageChannel.createMessage(embed)
 													.flatMap(msg -> {
-														instance.messID = msg.getId();
+														//instance.messID = msg.getId();
+														messID = msg.getId();
+														//instance.emojisss[atCount.getAndIncrement()]
 														return Mono.from(Flux.fromIterable(mapResult.values())
-																.flatMap(name -> msg.addReaction(ReactionEmoji.unicode(instance.emojisss[atCount.getAndIncrement()]))));
+																.flatMap(name -> msg.addReaction(ReactionEmoji.unicode(emojisss[atCount.getAndIncrement()]))));
 													})));
 
 								}
@@ -236,24 +283,28 @@ public class SpotifyBestSongWeeklyPoll {
 
 					Mono<Void> close = gatewayDiscordClient.on(MessageCreateEvent.class, event -> {
 
-								SpotifyBestSongWeeklyPoll instance = SpotifyBestSongWeeklyPoll.getInstance();
+								//SpotifyBestSongWeeklyPoll instance = SpotifyBestSongWeeklyPoll.getInstance();
 
 								if(!event.getMessage()
 										.getContent()
 										.split(" ")[0].equalsIgnoreCase("!close"))
 									return Mono.empty();
 
+								/*
 								if(instance == null)
 									return event.getMessage()
 											.getChannel()
 											.flatMap(channel -> channel.createMessage("Start contest first!"));
 
+
+								 */
 								Message message;
 								try {
+									//instance.messID
 									message = event.getMessage()
 											.getChannel()
 											.block()
-											.getMessageById(instance.messID)
+											.getMessageById(messID)
 											.block();
 								} catch(NullPointerException e) {
 									System.out.println(e.getMessage());
@@ -284,7 +335,8 @@ public class SpotifyBestSongWeeklyPoll {
 												.map(ReactionEmoji.Unicode::getRaw);
 										String rawUnicode = opt.orElse("");
 
-										String song = instance.songReaction.get(rawUnicode);
+										//String song = instance.songReaction.get(rawUnicode);
+										String song = songReaction.get(rawUnicode);
 										Integer count = reaction.getCount();
 
 										top.put(song, count);
@@ -314,7 +366,7 @@ public class SpotifyBestSongWeeklyPoll {
 							.then();
 
 					return mess.and(comm)
-							.and(cid)
+							//.and(cid)
 							.and(print)
 							.and(close);
 				});
@@ -324,13 +376,14 @@ public class SpotifyBestSongWeeklyPoll {
 
 	public Map<String, String> getPlaylist(String playlist) {
 
-		SpotifyBestSongWeeklyPoll instance = SpotifyBestSongWeeklyPoll.getInstance();
+		//SpotifyBestSongWeeklyPoll instance = SpotifyBestSongWeeklyPoll.getInstance();
 		Map<String, String> mapR = new HashMap<>();
 		Map<String, String> mapReturn = new HashMap<>();
 
 		try {
 
-			String accessToken = instance.loginSpotify();
+			//String accessToken = instance.loginSpotify();
+			String accessToken = loginSpotify();
 
 			URL url = new URL("https://api.spotify.com/v1/playlists/" + playlist +
 					"/tracks?fields=items(added_by.id,track.name)");
@@ -375,7 +428,8 @@ public class SpotifyBestSongWeeklyPoll {
 
 				try {
 
-					mapReturn.put(instance.getUser(id, accessToken), name);
+					//mapReturn.put(instance.getUser(id, accessToken), name);
+					mapReturn.put(getUser(id, accessToken), name);
 
 				} catch(Exception e) {
 					System.out.println(e.getMessage());
@@ -424,13 +478,14 @@ public class SpotifyBestSongWeeklyPoll {
 
 	public String[] getPlaylistSpec(String playlist) {
 
-		SpotifyBestSongWeeklyPoll instance = SpotifyBestSongWeeklyPoll.getInstance();
+		//SpotifyBestSongWeeklyPoll instance = SpotifyBestSongWeeklyPoll.getInstance();
 
 		String[] returned = new String[2];
 
 		try {
 
-			String accessTokenSpec = instance.loginSpotify();
+			//String accessTokenSpec = instance.loginSpotify();
+			String accessTokenSpec = loginSpotify();
 
 			URL urlSpec = new URL("https://api.spotify.com/v1/playlists/" + playlist + "?fields=href,images.url");
 			HttpURLConnection connSpec = (HttpURLConnection) urlSpec.openConnection();
@@ -473,11 +528,12 @@ public class SpotifyBestSongWeeklyPoll {
 
 	public void printAllPlaylist(String playlist) {
 
-		SpotifyBestSongWeeklyPoll instance = SpotifyBestSongWeeklyPoll.getInstance();
+		//SpotifyBestSongWeeklyPoll instance = SpotifyBestSongWeeklyPoll.getInstance();
 
 		try {
 
-			String accessTokenAll = instance.loginSpotify();
+			//String accessTokenAll = instance.loginSpotify();
+			String accessTokenAll = loginSpotify();
 
 			URL urlAll = new URL("https://api.spotify.com/v1/playlists/" + playlist);
 			HttpURLConnection connAll = (HttpURLConnection) urlAll.openConnection();
@@ -506,10 +562,15 @@ public class SpotifyBestSongWeeklyPoll {
 
 	public String loginSpotify() {
 
-		SpotifyBestSongWeeklyPoll instance = SpotifyBestSongWeeklyPoll.getInstance();
+		//SpotifyBestSongWeeklyPoll instance = SpotifyBestSongWeeklyPoll.getInstance();
 
+		/*
 		String clientID = instance.getClientID();
 		String clientIDSecret = instance.getCliendIDsecret();
+
+		 */
+		String clientID = getClientID();
+		String clientIDSecret = getCliendIDsecret();
 		String accessToken;
 
 		try {
@@ -557,6 +618,15 @@ public class SpotifyBestSongWeeklyPoll {
 		}
 
 		return accessToken;
+	}
+
+	public static void main(String[] args) {
+		SpringApplication.run(SpotifyBestSongWeeklyPoll.class);
+	}
+
+	@Override
+	public void run(String... args) throws Exception {
+		mainSpotify();
 	}
 
 }
