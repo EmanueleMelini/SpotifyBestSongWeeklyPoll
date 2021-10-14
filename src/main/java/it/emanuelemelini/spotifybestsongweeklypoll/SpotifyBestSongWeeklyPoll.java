@@ -1,5 +1,6 @@
 package it.emanuelemelini.spotifybestsongweeklypoll;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import discord4j.common.util.Snowflake;
 import discord4j.core.DiscordClient;
 import discord4j.core.GatewayDiscordClient;
@@ -10,6 +11,7 @@ import discord4j.core.object.reaction.ReactionEmoji;
 import discord4j.core.spec.EmbedCreateFields;
 import discord4j.core.spec.EmbedCreateSpec;
 import discord4j.rest.util.Color;
+import it.emanuelemelini.spotifybestsongweeklypoll.model.*;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Value;
@@ -26,16 +28,46 @@ import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
 
+/**
+ * A Discord bot that create a contest for voting the best song on the given playlist ID
+ */
 @SpringBootApplication
 public class SpotifyBestSongWeeklyPoll implements CommandLineRunner {
 
+	/**
+	 * The SpotifyDeveloper Application clientID
+	 */
 	private final String clientID;
+
+	/**
+	 * THe SpotifyDeveloper Application secret clientID
+	 */
 	private final String cliendIDsecret;
+
+	/**
+	 * The DiscordDeveloper Application Bot token
+	 */
 	private final String token;
 
+	/**
+	 * A Map that links a Discord's reaction to a song
+	 */
+	private Map<String, String> songReaction = new HashMap<>();
+
+	/**
+	 * The Discord message contest Snowflake
+	 */
+	private Snowflake messID;
+
+	/**
+	 * An Array that contains regional indicator letters emoji's unicode in UTF-16
+	 */
 	public final String[] emojisss = {
 			"\uD83C\uDDE6", //A
 			"\uD83C\uDDE7", //B
@@ -58,26 +90,6 @@ public class SpotifyBestSongWeeklyPoll implements CommandLineRunner {
 			"\uD83C\uDDF8", //S
 	};
 
-	private static SpotifyBestSongWeeklyPoll instance;
-
-	private Map<String, String> songReaction = new HashMap<>();
-
-	private Snowflake messID;
-
-	private boolean type = false;
-
-	public static SpotifyBestSongWeeklyPoll getInstance() {
-		return instance;
-	}
-
-	public static SpotifyBestSongWeeklyPoll open(String clientID, String clientIDsecret, String token) throws IllegalStateException {
-
-		if(instance != null)
-			throw new IllegalStateException();
-
-		return instance = new SpotifyBestSongWeeklyPoll(clientID, clientIDsecret, token);
-	}
-
 	public SpotifyBestSongWeeklyPoll(@Value("${CLIENT_ID}") String clientID,
 			@Value("${CLIENT_ID_SECRET}") String clientIDsecret, @Value("${DISCORD_TOKEN}") String token) {
 		this.clientID = clientID;
@@ -85,20 +97,34 @@ public class SpotifyBestSongWeeklyPoll implements CommandLineRunner {
 		this.token = token;
 	}
 
+	/**
+	 * The secret clientID's getter
+	 *
+	 * @return The secret clientID
+	 */
 	public String getCliendIDsecret() {
 		return cliendIDsecret;
 	}
 
+	/**
+	 * The clientID's getter
+	 *
+	 * @return The clientID
+	 */
 	public String getClientID() {
 		return clientID;
 	}
 
+	/**
+	 * The main function of the Bot
+	 * TODO: set project better
+	 */
 	public void mainSpotify() {
 
 		Mono<Void> client = DiscordClient.create(token)
 				.withGateway((GatewayDiscordClient gatewayDiscordClient) -> {
 
-					Mono<Void> mess = gatewayDiscordClient.on(MessageCreateEvent.class, event -> {
+					Mono<Void> testBot = gatewayDiscordClient.on(MessageCreateEvent.class, event -> {
 
 								Message message = event.getMessage();
 
@@ -112,6 +138,7 @@ public class SpotifyBestSongWeeklyPoll implements CommandLineRunner {
 							.then();
 
 					Mono<Void> print = gatewayDiscordClient.on(MessageCreateEvent.class, event -> {
+
 								String[] command = event.getMessage()
 										.getContent()
 										.split(" ");
@@ -122,72 +149,13 @@ public class SpotifyBestSongWeeklyPoll implements CommandLineRunner {
 												.getChannel()
 												.flatMap(channel -> channel.createMessage("Insert playlist"));
 
-									SpotifyBestSongWeeklyPoll instance = SpotifyBestSongWeeklyPoll.getInstance();
-
-									if(instance == null)
-										return event.getMessage()
-												.getChannel()
-												.flatMap(messageChannel -> messageChannel.createMessage(
-														"Insert clientID and secret clientID first"));
-
-									instance.printAllPlaylist(command[1]);
+									printAllPlaylist(command[1]);
 								}
 								return Mono.empty();
 							})
 							.then();
 
-					/*
-					Mono<Void> cid = gatewayDiscordClient.on(MessageCreateEvent.class, event -> {
-								Message message = event.getMessage();
-								String[] command = message.getContent()
-										.split(" ");
-
-
-								if(command[0].equalsIgnoreCase("!client")) {
-
-									if(command.length <= 2 && args.length == 1)
-										return message.getChannel()
-												.flatMap(messageChannel -> messageChannel.createMessage(
-														"Insert clientID and secrest clientID"));
-
-									SpotifyBestSongWeeklyPoll instance = SpotifyBestSongWeeklyPoll.getInstance();
-
-									if(instance == null)
-										return event.getMessage()
-												.getChannel()
-												.flatMap(messageChannel -> messageChannel.createMessage(
-														"Insert clientID and secret clientID first"));
-
-									//TODO: usare db
-									try {
-										String clientID = instance.getClientID();
-										String clientIDs = instance.getCliendIDsecret();
-
-										if(args.length == 1) {
-											clientID = command[1];
-											clientIDs = command[2];
-										}
-
-										SpotifyBestSongWeeklyPoll.open(clientID, clientIDs);
-									} catch(IllegalStateException e) {
-										return message.getChannel()
-												.flatMap(messageChannel -> messageChannel.createMessage(
-														"clientID and secret cliendID already inserted!"));
-									}
-
-									return message.getChannel()
-											.flatMap(messageChannel -> messageChannel.createMessage(
-													"clientID and secredt clientID inserted correctly!"));
-								}
-								return Mono.empty();
-							})
-							.then();
-
-					 */
-
-					Mono<Void> comm = gatewayDiscordClient.on(MessageCreateEvent.class, event -> {
-
-								//SpotifyBestSongWeeklyPoll instance = SpotifyBestSongWeeklyPoll.getInstance();
+					Mono<Void> contest = gatewayDiscordClient.on(MessageCreateEvent.class, event -> {
 
 								Message message = event.getMessage();
 
@@ -197,54 +165,77 @@ public class SpotifyBestSongWeeklyPoll implements CommandLineRunner {
 								String playlist;
 
 								Map<String, String> mapResult;
+								List<Track> tracksReturn;
 
 								if(command[0].equalsIgnoreCase("!contest")) {
 
-									/*
-									if(instance == null)
-										return message.getChannel()
-												.flatMap(messageChannel -> messageChannel.createMessage(
-														"Insert clientID and secret clientID first"));
-
-
-									 */
 									if(command.length < 2)
 										return message.getChannel()
 												.flatMap(messageChannel -> messageChannel.createMessage("Insert playlist id!"));
 
 									playlist = command[1];
 
-									//mapResult = instance.getPlaylist(playlist);
+									//mapResult = getPlaylist(playlist);
+									Playlist playlistMapped = getPlaylist(playlist);
+									//tracksReturn = getPlaylist(playlist);
 
-									mapResult = getPlaylist(playlist);
-
-									//String[] hrefthumb = instance.getPlaylistSpec(playlist);
+									/*
 									String[] hrefthumb = getPlaylistSpec(playlist);
-
 									String thumbnail = hrefthumb[0];
 									String href = hrefthumb[1];
+									 */
+
+									PlaylistSpec playlistSpecMapped = getPlaylistSpec(playlist);
+									String thumbnail = playlistSpecMapped.getImages().get(0).getUrl();
+									String href = playlistSpecMapped.getExternal_urls().getSpotify();
 
 									List<EmbedCreateFields.Field> fields = new LinkedList<>();
 
 									AtomicInteger atEmbed = new AtomicInteger(0);
 
 									//TODO: check canzoni non vecchie
-									//TODO: mettere regole nel messaggio
 									//TODO: usare Jackson per il JSON
+									//TODO: check messaggi di errore nelle chiamate (es playlist ID non valido/trovato)
 
+									/*
 									mapResult.forEach((nameUser, name) -> {
-										//instance.emojisss[atEmbed.get()]
 										fields.add(EmbedCreateFields.Field.of(emojisss[atEmbed.get()] + " " + name,
 												nameUser,
 												true));
 										if(atEmbed.get() % 2 == 1)
 											fields.add(EmbedCreateFields.Field.of("\u200b", "\u200b", true));
-										//instance.songReaction.put(instance.emojisss[atEmbed.get()], name);
 										songReaction.put(emojisss[atEmbed.get()], name);
 										atEmbed.getAndIncrement();
 									});
 
-									//System.out.println(instance.songReaction);
+									 */
+
+
+									DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+
+									final List<Items> itemsFiltered = playlistMapped.getItems()
+											.stream()
+											.filter(item -> checkDate(LocalDateTime.parse(item.getAdded_at()
+													.replace("T", " ")
+													.replace("Z", ""), formatter)))
+											.collect(Collectors.toList());
+
+									for(Items item : itemsFiltered) {
+
+										fields.add(EmbedCreateFields.Field.of(emojisss[atEmbed.get()] + " " + item.getTrack()
+														.getName(),
+												item.getTrack()
+														.getAlbum()
+														.getAllArtists(),
+												true));
+										if(atEmbed.get() % 2 == 1)
+											fields.add(EmbedCreateFields.Field.of("\u200b", "\u200b", true));
+										songReaction.put(emojisss[atEmbed.get()],
+												item.getTrack()
+														.getName());
+										atEmbed.getAndIncrement();
+									}
+
 									System.out.println(songReaction);
 
 									EmbedCreateSpec embed = EmbedCreateSpec.builder()
@@ -263,14 +254,23 @@ public class SpotifyBestSongWeeklyPoll implements CommandLineRunner {
 
 									AtomicInteger atCount = new AtomicInteger(0);
 
+									/*
 									return message.getChannel()
 											.flatMap(messageChannel -> Mono.from(messageChannel.createMessage(embed)
 													.flatMap(msg -> {
-														//instance.messID = msg.getId();
 														messID = msg.getId();
-														//instance.emojisss[atCount.getAndIncrement()]
 														return Mono.from(Flux.fromIterable(mapResult.values())
 																.flatMap(name -> msg.addReaction(ReactionEmoji.unicode(emojisss[atCount.getAndIncrement()]))));
+													})));
+
+									 */
+
+									return message.getChannel()
+											.flatMap(messageChannel -> Mono.from(messageChannel.createMessage(embed)
+													.flatMap(msg -> {
+														messID = msg.getId();
+														return Mono.from(Flux.fromIterable(itemsFiltered)
+																.flatMap(track -> msg.addReaction(ReactionEmoji.unicode(emojisss[atCount.getAndIncrement()]))));
 													})));
 
 								}
@@ -283,24 +283,13 @@ public class SpotifyBestSongWeeklyPoll implements CommandLineRunner {
 
 					Mono<Void> close = gatewayDiscordClient.on(MessageCreateEvent.class, event -> {
 
-								//SpotifyBestSongWeeklyPoll instance = SpotifyBestSongWeeklyPoll.getInstance();
-
 								if(!event.getMessage()
 										.getContent()
 										.split(" ")[0].equalsIgnoreCase("!close"))
 									return Mono.empty();
 
-								/*
-								if(instance == null)
-									return event.getMessage()
-											.getChannel()
-											.flatMap(channel -> channel.createMessage("Start contest first!"));
-
-
-								 */
 								Message message;
 								try {
-									//instance.messID
 									message = event.getMessage()
 											.getChannel()
 											.block()
@@ -320,7 +309,6 @@ public class SpotifyBestSongWeeklyPoll implements CommandLineRunner {
 											.getChannel()
 											.flatMap(channel -> channel.createMessage("Contest already closed!"));
 
-
 								List<Reaction> reactions = message.getReactions();
 
 								StringBuilder reacmess = new StringBuilder();
@@ -334,8 +322,6 @@ public class SpotifyBestSongWeeklyPoll implements CommandLineRunner {
 												.asUnicodeEmoji()
 												.map(ReactionEmoji.Unicode::getRaw);
 										String rawUnicode = opt.orElse("");
-
-										//String song = instance.songReaction.get(rawUnicode);
 										String song = songReaction.get(rawUnicode);
 										Integer count = reaction.getCount();
 
@@ -365,8 +351,7 @@ public class SpotifyBestSongWeeklyPoll implements CommandLineRunner {
 							})
 							.then();
 
-					return mess.and(comm)
-							//.and(cid)
+					return testBot.and(contest)
 							.and(print)
 							.and(close);
 				});
@@ -374,75 +359,63 @@ public class SpotifyBestSongWeeklyPoll implements CommandLineRunner {
 
 	}
 
-	public Map<String, String> getPlaylist(String playlist) {
+	/**
+	 * A method that use the Spotify's API to get the data of all the Songs on a given Playlist
+	 *
+	 * @param playlist The Spotify playlist ID
+	 * @return A Playlist JSON Object that contains the Spotify call result
+	 */
+	public Playlist getPlaylist(String playlist) {
 
-		//SpotifyBestSongWeeklyPoll instance = SpotifyBestSongWeeklyPoll.getInstance();
-		Map<String, String> mapR = new HashMap<>();
-		Map<String, String> mapReturn = new HashMap<>();
+		ObjectMapper mapper = new ObjectMapper();
+		Playlist playlistMapped = new Playlist();
 
 		try {
 
-			//String accessToken = instance.loginSpotify();
-			String accessToken = loginSpotify();
+			String accessToken = loginSpotify().getAccess_token();
 
-			URL url = new URL("https://api.spotify.com/v1/playlists/" + playlist +
-					"/tracks?fields=items(added_by.id,track.name)");
-			HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+			URL urlPlaylist = new URL("https://api.spotify.com/v1/playlists/" + playlist +
+					"/tracks?fields=items(added_by.id,track.name,track.album.artists,added_at)");
+			HttpURLConnection connPlaylist = (HttpURLConnection) urlPlaylist.openConnection();
 
-			conn.setRequestProperty("Authorization", "Bearer " + accessToken);
+			connPlaylist.setRequestProperty("Authorization", "Bearer " + accessToken);
 
-			conn.setRequestProperty("Content-Type", "application/json");
-			conn.setRequestMethod("GET");
+			connPlaylist.setRequestProperty("Content-Type", "application/json");
+			connPlaylist.setRequestMethod("GET");
 
 
-			BufferedReader in = new BufferedReader(new InputStreamReader(conn.getInputStream()));
-			String output;
-			JSONArray array;
+			BufferedReader inPlaylist = new BufferedReader(new InputStreamReader(connPlaylist.getInputStream()));
+			String outputPlaylist;
 
-			StringBuffer response = new StringBuffer();
-			while((output = in.readLine()) != null) {
-				response.append(output);
+			StringBuilder responsePlaylist = new StringBuilder();
+			while((outputPlaylist = inPlaylist.readLine()) != null) {
+				responsePlaylist.append(outputPlaylist);
 			}
 
-			in.close();
+			inPlaylist.close();
 
-			System.out.println(response);
+			System.out.println("Items: " + responsePlaylist);
 
-			String str = response.toString()
-					.replace(" ", "");
+			playlistMapped = mapper.readValue(responsePlaylist.toString(), Playlist.class);
 
-			JSONObject object = new JSONObject(str);
-
-			array = object.getJSONArray("items");
-
-			for(int i = 0; i < array.length(); i++) {
-				mapR.put(array.getJSONObject(i)
-								.getJSONObject("added_by")
-								.getString("id"),
-						array.getJSONObject(i)
-								.getJSONObject("track")
-								.getString("name"));
+			for(Items item : playlistMapped.getItems()) {
+				item.getAdded_by().setId(getUser(item.getAdded_by().getId(), accessToken));
 			}
-
-			mapR.forEach((id, name) -> {
-
-				try {
-
-					//mapReturn.put(instance.getUser(id, accessToken), name);
-					mapReturn.put(getUser(id, accessToken), name);
-
-				} catch(Exception e) {
-					System.out.println(e.getMessage());
-				}
-			});
 
 		} catch(IOException e) {
 			System.out.println("IO " + e.getMessage());
 		}
 
-		return mapReturn;
+		return playlistMapped;
 	}
 
+	/**
+	 * A method that use the Spotify's API to get the User displayed name from a given User ID
+	 *
+	 * @param id          The Spotify User ID
+	 * @param accessToken The Spotify API access token
+	 * @return The User displayed name
+	 */
 	public String getUser(String id, String accessToken) {
 
 		try {
@@ -464,7 +437,7 @@ public class SpotifyBestSongWeeklyPoll implements CommandLineRunner {
 			}
 
 			inUser.close();
-			System.out.println(responseUser);
+			System.out.println("User: " + responseUser);
 
 			return new JSONObject(responseUser.toString()
 					.replace(":", ": ")).getString("display_name");
@@ -476,64 +449,59 @@ public class SpotifyBestSongWeeklyPoll implements CommandLineRunner {
 
 	}
 
-	public String[] getPlaylistSpec(String playlist) {
+	/**
+	 * A method that use the Spotify's API to get the data of a given Playlist
+	 *
+	 * @param playlist The Spotify Playlist ID
+	 * @return A PlaylistSpec JSON Object that contains the Spotify call result
+	 */
+	public PlaylistSpec getPlaylistSpec(String playlist) {
 
-		//SpotifyBestSongWeeklyPoll instance = SpotifyBestSongWeeklyPoll.getInstance();
-
-		String[] returned = new String[2];
+		ObjectMapper mapper = new ObjectMapper();
+		PlaylistSpec playlistSpecMapped = new PlaylistSpec();
 
 		try {
 
-			//String accessTokenSpec = instance.loginSpotify();
-			String accessTokenSpec = loginSpotify();
+			String accessTokenSpec = loginSpotify().getAccess_token();
 
-			URL urlSpec = new URL("https://api.spotify.com/v1/playlists/" + playlist + "?fields=href,images.url");
+			URL urlSpec = new URL(
+					"https://api.spotify.com/v1/playlists/" + playlist + "?fields=external_urls.spotify,images.url");
 			HttpURLConnection connSpec = (HttpURLConnection) urlSpec.openConnection();
 
 			connSpec.setRequestProperty("Authorization", "Bearer " + accessTokenSpec);
 			connSpec.setRequestProperty("Content-Type", "application/json");
 			connSpec.setRequestMethod("GET");
 
-
 			BufferedReader inSpec = new BufferedReader(new InputStreamReader(connSpec.getInputStream()));
 			String outputSpec;
 
-			StringBuffer responseSpec = new StringBuffer();
+			StringBuilder responseSpec = new StringBuilder();
 			while((outputSpec = inSpec.readLine()) != null) {
 				responseSpec.append(outputSpec);
 			}
 
 			inSpec.close();
 
-			System.out.println(responseSpec);
-
-			String strSpec = responseSpec.toString()
-					.replace(" ", "");
-
-			JSONObject objectSpec = new JSONObject(strSpec);
-
-			returned[0] = objectSpec.getJSONArray("images")
-					.getJSONObject(0)
-					.getString("url");
-			returned[1] = objectSpec.getString("href");
+			System.out.println("Spec: " + responseSpec);
+			playlistSpecMapped = mapper.readValue(responseSpec.toString(), PlaylistSpec.class);
 
 		} catch(IOException e) {
 			System.out.println("IO " + e.getMessage());
-			returned[0] = "Error";
-			returned[1] = "Error";
 		}
 
-		return returned;
+		return playlistSpecMapped;
 	}
 
+	/**
+	 * A method that print in console the full output of the Spotify call to the Playlist's API
+	 *
+	 * @param playlist The Spotify Playlist ID
+	 */
 	public void printAllPlaylist(String playlist) {
-
-		//SpotifyBestSongWeeklyPoll instance = SpotifyBestSongWeeklyPoll.getInstance();
 
 		try {
 
-			//String accessTokenAll = instance.loginSpotify();
-			String accessTokenAll = loginSpotify();
+			String accessTokenAll = loginSpotify().getAccess_token();
 
 			URL urlAll = new URL("https://api.spotify.com/v1/playlists/" + playlist);
 			HttpURLConnection connAll = (HttpURLConnection) urlAll.openConnection();
@@ -545,14 +513,14 @@ public class SpotifyBestSongWeeklyPoll implements CommandLineRunner {
 			BufferedReader inAll = new BufferedReader(new InputStreamReader(connAll.getInputStream()));
 			String outputAll;
 
-			StringBuffer response = new StringBuffer();
+			StringBuilder responseAll = new StringBuilder();
 			while((outputAll = inAll.readLine()) != null) {
-				response.append(outputAll);
+				responseAll.append(outputAll);
 			}
 
 			inAll.close();
 
-			System.out.println(response);
+			System.out.println("All: " + responseAll);
 
 		} catch(Exception e) {
 			System.out.println(e.getMessage());
@@ -560,18 +528,20 @@ public class SpotifyBestSongWeeklyPoll implements CommandLineRunner {
 
 	}
 
-	public String loginSpotify() {
+	/**
+	 * A metod that calls Spotify's API for login
+	 *
+	 * @return A Login JSON Object that contains the Spotify call return
+	 */
+	public Login loginSpotify() {
 
-		//SpotifyBestSongWeeklyPoll instance = SpotifyBestSongWeeklyPoll.getInstance();
+		//TODO: usare Spotify flow con il refresh del token invece di crearne uno nuovo ogni chiamata
 
-		/*
-		String clientID = instance.getClientID();
-		String clientIDSecret = instance.getCliendIDsecret();
-
-		 */
 		String clientID = getClientID();
 		String clientIDSecret = getCliendIDsecret();
-		String accessToken;
+
+		ObjectMapper mapper = new ObjectMapper();
+		Login loginMapped = new Login();
 
 		try {
 
@@ -580,44 +550,79 @@ public class SpotifyBestSongWeeklyPoll implements CommandLineRunner {
 			String clientLoginTo64 = clientID + ":" + clientIDSecret;
 			byte[] accessLogin = clientLoginTo64.getBytes();
 			int postDataLenghtLogin = postDataLogin.length;
+
 			URL urlLogin = new URL("https://accounts.spotify.com/api/token");
 			HttpURLConnection connLogin = (HttpURLConnection) urlLogin.openConnection();
 			connLogin.setDoOutput(true);
 			connLogin.setRequestMethod("POST");
 			String base64 = Base64.getEncoder()
 					.encodeToString(accessLogin);
-			System.out.println("Base: " + base64);
+
 			connLogin.setRequestProperty("Content-Type", "application/x-www-form-urlencoded");
 			connLogin.setRequestProperty("Authorization", "Basic " + base64);
 			connLogin.setRequestProperty("charset", "utf-8");
 			connLogin.setRequestProperty("Content-Lenght", Integer.toString(postDataLenghtLogin));
+
 			try(DataOutputStream wr = new DataOutputStream(connLogin.getOutputStream())) {
 				wr.write(postDataLogin);
 			}
+
 			BufferedReader inLogin = new BufferedReader(new InputStreamReader(connLogin.getInputStream()));
 			String outputLogin;
 
-			StringBuffer responseLogin = new StringBuffer();
+			StringBuilder responseLogin = new StringBuilder();
 			while((outputLogin = inLogin.readLine()) != null) {
 				responseLogin.append(outputLogin);
 			}
+
 			System.out.println("Login: " + responseLogin);
 			inLogin.close();
 
-			String strLogin = responseLogin.toString()
-					.replace(":", ": ");
-			System.out.println(strLogin);
-			JSONObject objectLogin = new JSONObject(strLogin);
-			System.out.println(objectLogin);
-			accessToken = objectLogin.getString("access_token");
-			System.out.println("Token: " + accessToken);
+			loginMapped = mapper.readValue(responseLogin.toString(), Login.class);
 
 		} catch(IOException e) {
 			System.out.println("IO " + e.getMessage());
-			accessToken = "Error";
 		}
 
-		return accessToken;
+		return loginMapped;
+	}
+
+	public boolean checkDate(LocalDateTime date) {
+
+		LocalDateTime ora = LocalDateTime.now();
+		ora = ora.withHour(0)
+				.withMinute(0)
+				.withSecond(0);
+		int days;
+		switch(ora.getDayOfWeek()) {
+			case MONDAY:
+				days = 5;
+				break;
+			case TUESDAY:
+				days = 6;
+				break;
+			case WEDNESDAY:
+				days = 7;
+				break;
+			case THURSDAY:
+				days = 1;
+				break;
+			case FRIDAY:
+				days = 2;
+				break;
+			case SATURDAY:
+				days = 3;
+				break;
+			case SUNDAY:
+				days = 4;
+				break;
+			default:
+				days = 0;
+				break;
+		}
+
+		return ora.minusDays(days)
+				.isBefore(date);
 	}
 
 	public static void main(String[] args) {
