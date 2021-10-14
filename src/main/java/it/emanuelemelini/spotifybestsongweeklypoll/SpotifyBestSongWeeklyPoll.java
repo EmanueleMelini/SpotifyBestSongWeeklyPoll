@@ -587,13 +587,21 @@ public class SpotifyBestSongWeeklyPoll implements CommandLineRunner {
 		return loginMapped;
 	}
 
+	/**
+	 * A method that (for now) check if the given date is after the last Wednesday
+	 * @param date The Date to be checked
+	 * @return A boolean: true if the Date is after, false if the Date is before
+	 */
 	public boolean checkDate(LocalDateTime date) {
+
+		//TODO: generalizzare il controllo da solo mercoledì a un giorno scelto da comando e salvato su db
 
 		LocalDateTime ora = LocalDateTime.now();
 		ora = ora.withHour(0)
 				.withMinute(0)
 				.withSecond(0);
 		int days;
+
 		switch(ora.getDayOfWeek()) {
 			case MONDAY:
 				days = 5;
