@@ -3,21 +3,30 @@ package it.emanuelemelini.spotifybestsongweeklypoll.db;
 import javax.persistence.*;
 
 @Entity
+@Table(name = "winners")
 public class Winners {
 
 	@Id
 	@GeneratedValue(strategy = GenerationType.TABLE)
-	private long IDwinner;
+	private long idwinner;
 	private String name;
 	private String id;
 	private boolean deleted;
 
-	public long getIDwinner() {
-		return IDwinner;
+	protected Winners () {}
+
+	public Winners(String name, String id, boolean deleted) {
+		this.name = name;
+		this.id = id;
+		this.deleted = deleted;
 	}
 
-	public void setIDwinner(long IDwinner) {
-		this.IDwinner = IDwinner;
+	public long getIdwinner() {
+		return idwinner;
+	}
+
+	public void setIdwinner(long IDwinner) {
+		this.idwinner = IDwinner;
 	}
 
 	public String getName() {
