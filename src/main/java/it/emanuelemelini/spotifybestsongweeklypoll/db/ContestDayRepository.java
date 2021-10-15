@@ -1,5 +1,6 @@
 package it.emanuelemelini.spotifybestsongweeklypoll.db;
 
+import it.emanuelemelini.spotifybestsongweeklypoll.db.model.ContestDay;
 import org.springframework.data.repository.CrudRepository;
 
 import java.util.List;

@@ -1,4 +1,4 @@
-package it.emanuelemelini.spotifybestsongweeklypoll.db;
+package it.emanuelemelini.spotifybestsongweeklypoll.db.model;
 
 import javax.persistence.*;
 

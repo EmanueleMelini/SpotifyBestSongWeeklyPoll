@@ -11,8 +11,7 @@ import discord4j.core.object.reaction.ReactionEmoji;
 import discord4j.core.spec.EmbedCreateFields;
 import discord4j.core.spec.EmbedCreateSpec;
 import discord4j.rest.util.Color;
-import it.emanuelemelini.spotifybestsongweeklypoll.model.*;
-import org.json.JSONArray;
+import it.emanuelemelini.spotifybestsongweeklypoll.lib.*;
 import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
@@ -186,15 +185,16 @@ public class SpotifyBestSongWeeklyPoll implements CommandLineRunner {
 									 */
 
 									PlaylistSpec playlistSpecMapped = getPlaylistSpec(playlist);
-									String thumbnail = playlistSpecMapped.getImages().get(0).getUrl();
-									String href = playlistSpecMapped.getExternal_urls().getSpotify();
+									String thumbnail = playlistSpecMapped.getImages()
+											.get(0)
+											.getUrl();
+									String href = playlistSpecMapped.getExternal_urls()
+											.getSpotify();
 
 									List<EmbedCreateFields.Field> fields = new LinkedList<>();
 
 									AtomicInteger atEmbed = new AtomicInteger(0);
 
-									//TODO: check canzoni non vecchie
-									//TODO: usare Jackson per il JSON
 									//TODO: check messaggi di errore nelle chiamate (es playlist ID non valido/trovato)
 
 									/*
@@ -209,7 +209,6 @@ public class SpotifyBestSongWeeklyPoll implements CommandLineRunner {
 									});
 
 									 */
-
 
 									DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
@@ -335,6 +334,8 @@ public class SpotifyBestSongWeeklyPoll implements CommandLineRunner {
 										.sorted(Map.Entry.comparingByValue(Comparator.reverseOrder()))
 										.forEachOrdered(x -> topSorted.put(x.getKey(), x.getValue()));
 
+								//TODO: Embed
+
 								topSorted.forEach((key, value) -> {
 									reacmess.append(key)
 											.append(" - ")
@@ -399,7 +400,9 @@ public class SpotifyBestSongWeeklyPoll implements CommandLineRunner {
 			playlistMapped = mapper.readValue(responsePlaylist.toString(), Playlist.class);
 
 			for(Items item : playlistMapped.getItems()) {
-				item.getAdded_by().setId(getUser(item.getAdded_by().getId(), accessToken));
+				item.getAdded_by()
+						.setId(getUser(item.getAdded_by()
+								.getId(), accessToken));
 			}
 
 		} catch(IOException e) {
@@ -589,6 +592,7 @@ public class SpotifyBestSongWeeklyPoll implements CommandLineRunner {
 
 	/**
 	 * A method that (for now) check if the given date is after the last Wednesday
+	 *
 	 * @param date The Date to be checked
 	 * @return A boolean: true if the Date is after, false if the Date is before
 	 */

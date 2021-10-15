@@ -1,4 +1,4 @@
-package it.emanuelemelini.spotifybestsongweeklypoll.model;
+package it.emanuelemelini.spotifybestsongweeklypoll.lib;
 
 public class Images {
 

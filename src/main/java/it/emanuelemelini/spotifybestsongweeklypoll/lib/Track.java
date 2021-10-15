@@ -1,6 +1,4 @@
-package it.emanuelemelini.spotifybestsongweeklypoll.model;
-
-import java.util.List;
+package it.emanuelemelini.spotifybestsongweeklypoll.lib;
 
 public class Track {
 
