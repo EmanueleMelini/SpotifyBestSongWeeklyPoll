@@ -4,18 +4,18 @@ import javax.persistence.*;
 
 @Entity
 @Table(name = "winners")
-public class Winners {
+public class Winner {
 
 	@Id
-	@GeneratedValue(strategy = GenerationType.TABLE)
+	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	private long idwinner;
 	private String name;
 	private String id;
 	private boolean deleted;
 
-	protected Winners () {}
+	protected Winner() {}
 
-	public Winners(String name, String id, boolean deleted) {
+	public Winner(String name, String id, boolean deleted) {
 		this.name = name;
 		this.id = id;
 		this.deleted = deleted;

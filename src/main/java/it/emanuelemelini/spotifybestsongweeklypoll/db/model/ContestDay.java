@@ -7,7 +7,7 @@ import javax.persistence.*;
 public class ContestDay {
 
 	@Id
-	@GeneratedValue(strategy = GenerationType.TABLE)
+	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	@Column(name = "idcontest_day")
 	private long idcontestday;
 	@Column(name = "guild_id")
