@@ -9,7 +9,7 @@ import java.util.List;
 @Repository
 public interface ContestDayRepository extends CrudRepository<ContestDay, Long> {
 
-	List<ContestDay> getAllContestDayByGuildid(String guildid);
+	List<ContestDay> getAllContestDayByGuildid(long guildid);
 
 	List<ContestDay> getAllContestDayByDay(ContestDay.Day day);
 

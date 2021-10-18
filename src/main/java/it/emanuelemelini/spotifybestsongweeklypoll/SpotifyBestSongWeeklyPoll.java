@@ -11,8 +11,11 @@ import discord4j.core.object.reaction.ReactionEmoji;
 import discord4j.core.spec.EmbedCreateFields;
 import discord4j.core.spec.EmbedCreateSpec;
 import discord4j.rest.util.Color;
+import it.emanuelemelini.spotifybestsongweeklypoll.db.WinnerRepository;
+import it.emanuelemelini.spotifybestsongweeklypoll.db.model.Winner;
 import it.emanuelemelini.spotifybestsongweeklypoll.lib.*;
 import org.json.JSONObject;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
@@ -38,6 +41,9 @@ import java.util.stream.Collectors;
  */
 @SpringBootApplication
 public class SpotifyBestSongWeeklyPoll implements CommandLineRunner {
+
+	@Autowired
+	private WinnerRepository winnerRepository;
 
 	/**
 	 * The SpotifyDeveloper Application clientID
@@ -219,20 +225,30 @@ public class SpotifyBestSongWeeklyPoll implements CommandLineRunner {
 													.replace("Z", ""), formatter)))
 											.collect(Collectors.toList());
 
+									List<Winner> winners = winnerRepository.getWinnersByGuildid(message.getGuildId().get()
+											.asLong());
+
 									for(Items item : itemsFiltered) {
 
-										fields.add(EmbedCreateFields.Field.of(emojisss[atEmbed.get()] + " " + item.getTrack()
-														.getName(),
-												item.getTrack()
-														.getAlbum()
-														.getAllArtists(),
-												true));
-										if(atEmbed.get() % 2 == 1)
-											fields.add(EmbedCreateFields.Field.of("\u200b", "\u200b", true));
-										songReaction.put(emojisss[atEmbed.get()],
-												item.getTrack()
-														.getName());
-										atEmbed.getAndIncrement();
+										if(winners.stream()
+												.noneMatch(winner -> winner.getId()
+														.equalsIgnoreCase(item.getAdded_by()
+																.getId()))) {
+
+
+											fields.add(EmbedCreateFields.Field.of(emojisss[atEmbed.get()] + " " + item.getTrack()
+															.getName(),
+													item.getTrack()
+															.getAlbum()
+															.getAllArtists(),
+													true));
+											if(atEmbed.get() % 2 == 1)
+												fields.add(EmbedCreateFields.Field.of("\u200b", "\u200b", true));
+											songReaction.put(emojisss[atEmbed.get()],
+													item.getTrack()
+															.getName());
+											atEmbed.getAndIncrement();
+										}
 									}
 
 									System.out.println(songReaction);

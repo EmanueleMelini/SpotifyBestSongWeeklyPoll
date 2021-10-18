@@ -10,14 +10,17 @@ public class ContestDay {
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	@Column(name = "idcontest_day")
 	private long idcontestday;
+
 	@Column(name = "guild_id")
-	private String guildid;
+	private long guildid;
+
 	private Day day;
+
 	private boolean deleted;
 
 	protected ContestDay() {}
 
-	public ContestDay(String guildid, Day day, boolean deleted) {
+	public ContestDay(long guildid, Day day, boolean deleted) {
 		this.guildid = guildid;
 		this.day = day;
 		this.deleted = deleted;
@@ -27,15 +30,17 @@ public class ContestDay {
 		return idcontestday;
 	}
 
+	//TODO: manytoone
+
 	public void setIdcontestday(long idcontest_day) {
 		this.idcontestday = idcontest_day;
 	}
 
-	public String getGuildid() {
+	public long getGuildid() {
 		return guildid;
 	}
 
-	public void setGuildid(String guild_id) {
+	public void setGuildid(long guild_id) {
 		this.guildid = guild_id;
 	}
 
