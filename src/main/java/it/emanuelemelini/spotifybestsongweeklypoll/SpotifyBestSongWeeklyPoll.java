@@ -336,6 +336,25 @@ public class SpotifyBestSongWeeklyPoll implements CommandLineRunner {
 
 								//TODO: Embed
 
+								List<EmbedCreateFields.Field> fields = new LinkedList<>();
+
+								topSorted.forEach((key, value) -> {
+									fields.add(EmbedCreateFields.Field.of(key, "Voti: " + (value - 1),
+										false));
+								});
+
+								EmbedCreateSpec embed = EmbedCreateSpec.builder()
+										.title("Weekly poll")
+										.author(EmbedCreateFields.Author.of("Emanuele Melini",
+												"https://github.com/EmanueleMelini",
+												"https://avatars.githubusercontent.com/u/73402425?v=4"))
+										.color(Color.GREEN)
+										.description(
+												"Risultati contest:\n")
+										.addAllFields(fields)
+										.timestamp(Instant.now())
+										.build();
+
 								topSorted.forEach((key, value) -> {
 									reacmess.append(key)
 											.append(" - ")
@@ -348,7 +367,7 @@ public class SpotifyBestSongWeeklyPoll implements CommandLineRunner {
 
 								return event.getMessage()
 										.getChannel()
-										.flatMap(channel -> channel.createMessage(reacmess.toString()));
+										.flatMap(channel -> channel.createMessage(embed));
 							})
 							.then();
 
