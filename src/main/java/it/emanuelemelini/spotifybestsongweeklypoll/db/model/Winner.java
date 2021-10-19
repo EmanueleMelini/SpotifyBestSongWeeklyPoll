@@ -1,6 +1,9 @@
 package it.emanuelemelini.spotifybestsongweeklypoll.db.model;
 
+import lombok.Builder;
+
 import javax.persistence.*;
+import java.time.LocalDateTime;
 import java.util.Date;
 
 @Entity
@@ -20,17 +23,18 @@ public class Winner {
 	private boolean deleted;
 
 	@Column(name = "winner_date")
-	private Date winnerdate;
+	private LocalDateTime winnerdate;
 
 	@Column(name = "guild_id")
 	private long guildid;
 
 	protected Winner() {}
 
-	public Winner(String name, String id, boolean deleted, Date winnerdate) {
+	public Winner(String name, String id, LocalDateTime winnerdate) {
 		this.name = name;
 		this.id = id;
-		this.deleted = deleted;
+		this.deleted = false;
+		this.winnerdate = winnerdate;
 	}
 
 	//TODO: manytoone
@@ -67,11 +71,11 @@ public class Winner {
 		this.deleted = deleted;
 	}
 
-	public Date getWinnerdate() {
+	public LocalDateTime getWinnerdate() {
 		return winnerdate;
 	}
 
-	public void setWinnerdate(Date winnerdate) {
+	public void setWinnerdate(LocalDateTime winnerdate) {
 		this.winnerdate = winnerdate;
 	}
 

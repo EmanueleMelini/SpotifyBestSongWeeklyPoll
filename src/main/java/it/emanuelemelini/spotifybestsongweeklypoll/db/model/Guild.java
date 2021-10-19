@@ -19,6 +19,10 @@ public class Guild {
 		this.guildid = guildid;
 	}
 
+	public long getIdguild() {
+		return idguild;
+	}
+
 	public long getGuildid() {
 		return guildid;
 	}
