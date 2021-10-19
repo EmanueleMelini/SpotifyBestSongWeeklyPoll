@@ -13,10 +13,13 @@ public class Guild {
 	@Column(name = "guild_id")
 	private long guildid;
 
+	private boolean deleted;
+
 	protected Guild() {}
 
-	public Guild(long guildid) {
+	public Guild(long guildid, boolean deleted) {
 		this.guildid = guildid;
+		this.deleted = deleted;
 	}
 
 	public long getIdguild() {
@@ -29,6 +32,14 @@ public class Guild {
 
 	public void setGuildid(long guildid) {
 		this.guildid = guildid;
+	}
+
+	public boolean isDeleted() {
+		return deleted;
+	}
+
+	public void setDeleted(boolean deleted) {
+		this.deleted = deleted;
 	}
 
 }

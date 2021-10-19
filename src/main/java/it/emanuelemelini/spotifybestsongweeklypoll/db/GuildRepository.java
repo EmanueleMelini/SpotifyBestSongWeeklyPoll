@@ -7,7 +7,9 @@ import java.util.List;
 
 public interface GuildRepository extends CrudRepository<Guild, Long> {
 
-	Guild getGuildByGuildid(long guildid);
+	Guild getGuildByGuildidAndDeleted(long guildid, boolean deleted);
+
+	List<Guild> getGuildsByDeleted(boolean deleted);
 
 	Guild getGuildByIdguild(long idguild);
 

@@ -11,11 +11,16 @@ import discord4j.core.object.reaction.ReactionEmoji;
 import discord4j.core.spec.EmbedCreateFields;
 import discord4j.core.spec.EmbedCreateSpec;
 import discord4j.rest.util.Color;
+import it.emanuelemelini.spotifybestsongweeklypoll.db.ContestDayRepository;
 import it.emanuelemelini.spotifybestsongweeklypoll.db.GuildRepository;
 import it.emanuelemelini.spotifybestsongweeklypoll.db.WinnerRepository;
+import it.emanuelemelini.spotifybestsongweeklypoll.db.model.ContestDay;
 import it.emanuelemelini.spotifybestsongweeklypoll.db.model.Guild;
 import it.emanuelemelini.spotifybestsongweeklypoll.db.model.Winner;
-import it.emanuelemelini.spotifybestsongweeklypoll.lib.*;
+import it.emanuelemelini.spotifybestsongweeklypoll.lib.Items;
+import it.emanuelemelini.spotifybestsongweeklypoll.lib.Login;
+import it.emanuelemelini.spotifybestsongweeklypoll.lib.Playlist;
+import it.emanuelemelini.spotifybestsongweeklypoll.lib.PlaylistSpec;
 import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -38,6 +43,8 @@ import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
+import static it.emanuelemelini.spotifybestsongweeklypoll.db.model.ContestDay.Day.*;
+
 /**
  * A Discord bot that create a contest for voting the best song on the given playlist ID
  */
@@ -49,6 +56,9 @@ public class SpotifyBestSongWeeklyPoll implements CommandLineRunner {
 
 	@Autowired
 	private GuildRepository guildRepository;
+
+	@Autowired
+	private ContestDayRepository contestDayRepository;
 
 	/**
 	 * The SpotifyDeveloper Application clientID
@@ -179,9 +189,6 @@ public class SpotifyBestSongWeeklyPoll implements CommandLineRunner {
 
 								String playlist;
 
-								Map<String, String> mapResult;
-								List<Track> tracksReturn;
-
 								if(command[0].equalsIgnoreCase("!contest")) {
 
 									if(command.length < 2)
@@ -190,20 +197,14 @@ public class SpotifyBestSongWeeklyPoll implements CommandLineRunner {
 
 									playlist = command[1];
 
-									//mapResult = getPlaylist(playlist);
 									Playlist playlistMapped = getPlaylist(playlist);
-									//tracksReturn = getPlaylist(playlist);
-
-									/*
-									String[] hrefthumb = getPlaylistSpec(playlist);
-									String thumbnail = hrefthumb[0];
-									String href = hrefthumb[1];
-									 */
 
 									PlaylistSpec playlistSpecMapped = getPlaylistSpec(playlist);
+
 									String thumbnail = playlistSpecMapped.getImages()
 											.get(0)
 											.getUrl();
+
 									String href = playlistSpecMapped.getExternal_urls()
 											.getSpotify();
 
@@ -215,62 +216,86 @@ public class SpotifyBestSongWeeklyPoll implements CommandLineRunner {
 
 									//TODO: check messaggi di errore nelle chiamate (es playlist ID non valido/trovato)
 
-									/*
-									mapResult.forEach((nameUser, name) -> {
-										fields.add(EmbedCreateFields.Field.of(emojisss[atEmbed.get()] + " " + name,
-												nameUser,
-												true));
-										if(atEmbed.get() % 2 == 1)
-											fields.add(EmbedCreateFields.Field.of("\u200b", "\u200b", true));
-										songReaction.put(emojisss[atEmbed.get()], name);
-										atEmbed.getAndIncrement();
-									});
-
-									 */
-
 									DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+
+									Guild guild = guildRepository.getGuildByGuildidAndDeleted(message.getGuildId()
+											.get()
+											.asLong(), false);
+
+									if(guild == null) {
+										guild = new Guild(message.getGuildId()
+												.get()
+												.asLong(), false);
+										guildRepository.save(guild);
+									}
+
+									ContestDay contestDay = contestDayRepository.getContestDayByGuildAndDeleted(guild, false);
+
+									if(contestDay == null)
+										return message.getChannel()
+												.flatMap(messageChannel -> messageChannel.createMessage("Insert Contest Day!"));
+
+
+									//TODO: change to getWinnersByGuildidAndDeletedAndWinnerdate()
+									List<Winner> winners = winnerRepository.getWinnersByGuildAndDeleted(guild, false);
+
+									Winner lastWinner = winnerRepository.findTopByGuildAndDeletedOrderByWinnerdateDesc(guild,
+											false);
+									String last_winner;
+
+									if(lastWinner != null) {
+										if(!lastWinner.getWinnerdate()
+												.isBefore(LocalDateTime.now().minusDays(7))) {
+											last_winner = lastWinner.getId();
+										} else
+											last_winner = "";
+									} else
+										last_winner = "";
+
+									/*
+									item -> winners.stream()
+													.noneMatch(winner -> winner.getId()
+															.equalsIgnoreCase(item.getAdded_by()
+																	.getId()))
+									 */
 
 									final List<Items> itemsFiltered = playlistMapped.getItems()
 											.stream()
 											.filter(item -> checkDate(LocalDateTime.parse(item.getAdded_at()
 													.replace("T", " ")
 													.replace("Z", ""), formatter)))
+											.filter(item -> !item.getAdded_by()
+													.getId()
+													.equalsIgnoreCase(last_winner))
 											.collect(Collectors.toList());
-
-									Guild guild = guildRepository.getGuildByGuildid(message.getGuildId().get().asLong());
-
-									//TODO: change to getWinnersByGuildidAndDeletedAndWinnerdate()
-									List<Winner> winners = winnerRepository.getWinnersByGuildidAndDeleted(guild.getGuildid(), false);
 
 									for(Items item : itemsFiltered) {
 
-										if(winners.stream()
-												.noneMatch(winner -> winner.getId()
-														.equalsIgnoreCase(item.getAdded_by()
-																.getId()))) {
+										fields.add(EmbedCreateFields.Field.of(emojisss[atEmbed.get()] + " " + item.getTrack()
+														.getName(),
+												item.getTrack()
+														.getAlbum()
+														.getAllArtists(),
+												true));
 
+										if(atEmbed.get() % 2 == 1)
+											fields.add(EmbedCreateFields.Field.of("\u200b", "\u200b", true));
 
-											fields.add(EmbedCreateFields.Field.of(emojisss[atEmbed.get()] + " " +
-															item.getTrack()
-																	.getName(),
-													item.getTrack()
-															.getAlbum()
-															.getAllArtists(),
-													true));
-											if(atEmbed.get() % 2 == 1)
-												fields.add(EmbedCreateFields.Field.of("\u200b", "\u200b", true));
-											songReaction.put(emojisss[atEmbed.get()],
-													new UserTrack(item.getAdded_by()
-															.getId(),
-															getUser(item.getAdded_by()
-																	.getId(), loginSpotify().getAccess_token()),
-															item.getTrack()
-																	.getName()));
-											atEmbed.getAndIncrement();
-										}
+										UserTrack userTrack = new UserTrack(item.getAdded_by()
+												.getId(),
+												getUser(item.getAdded_by()
+														.getId(), loginSpotify().getAccess_token()),
+												item.getTrack()
+														.getName());
+
+										//System.out.println("UserTrack: " + userTrack);
+
+										songReaction.put(emojisss[atEmbed.get()], userTrack);
+
+										atEmbed.getAndIncrement();
 									}
 
-									System.out.println(songReaction);
+									//System.out.println(songReaction);
 
 									EmbedCreateSpec embed = EmbedCreateSpec.builder()
 											.title("Weekly poll")
@@ -312,6 +337,7 @@ public class SpotifyBestSongWeeklyPoll implements CommandLineRunner {
 									return Mono.empty();
 
 								Message message;
+
 								try {
 									message = event.getMessage()
 											.getChannel()
@@ -348,6 +374,8 @@ public class SpotifyBestSongWeeklyPoll implements CommandLineRunner {
 
 										top.put(userTrack, count);
 
+										//System.out.println(userTrack.toString());
+
 									}
 								}
 
@@ -359,13 +387,16 @@ public class SpotifyBestSongWeeklyPoll implements CommandLineRunner {
 								String thumbnail = playlistSpecThis.getImages()
 										.get(0)
 										.getUrl();
+
 								String href = playlistSpecThis.getExternal_urls()
 										.getSpotify();
 
 								List<EmbedCreateFields.Field> fields = new LinkedList<>();
 
 								topSorted.forEach((key, value) -> {
-									fields.add(EmbedCreateFields.Field.of(key.getTrackname(), key.getSpotifyname() + " - Voti: " + (value - 1), false));
+									fields.add(EmbedCreateFields.Field.of(key.getTrackname(),
+											key.getSpotifyname() + " - Voti: " + (value - 1),
+											false));
 								});
 
 								UserTrack userWinner = topSorted.entrySet()
@@ -373,8 +404,7 @@ public class SpotifyBestSongWeeklyPoll implements CommandLineRunner {
 										.next()
 										.getKey();
 
-								String winner_id = userWinner
-										.getSpotifyid();
+								String winner_id = userWinner.getSpotifyid();
 								String winner_name = userWinner.getSpotifyname();
 
 								EmbedCreateSpec embed = EmbedCreateSpec.builder()
@@ -385,8 +415,11 @@ public class SpotifyBestSongWeeklyPoll implements CommandLineRunner {
 										.color(Color.GREEN)
 										.description("Risultati contest:\n")
 										.addAllFields(fields)
-										.addField(EmbedCreateFields.Field.of("\u200b", "\u200b", true))
-										.addField(EmbedCreateFields.Field.of("Il vicitore del contest è: " + winner_name + "!\nRicorda che hai diritto a inserire ben due canzoni domani!", "\u200b", true))
+										.addField(EmbedCreateFields.Field.of("\u200b", "\u200b", false))
+										.addField(EmbedCreateFields.Field.of("Il vicitore del contest è: " + winner_name +
+														"!\nRicorda che hai diritto a inserire ben due canzoni domani!",
+												"\u200b",
+												true))
 										.thumbnail(thumbnail)
 										.url(href)
 										.timestamp(Instant.now())
@@ -395,10 +428,25 @@ public class SpotifyBestSongWeeklyPoll implements CommandLineRunner {
 								message.removeAllReactions()
 										.block();
 
-								Winner winner = new Winner(getUser(winner_id, loginSpotify().getAccess_token()),
-										winner_id,
-										LocalDateTime.now());
-								winnerRepository.save(winner);
+								Guild guild = guildRepository.getGuildByGuildidAndDeleted(message.getGuildId()
+										.get()
+										.asLong(), false);
+
+								if(guild == null) {
+									guild = new Guild(message.getGuildId()
+											.get()
+											.asLong(), false);
+									guildRepository.save(guild);
+								}
+
+								if(winnerRepository.getWinnersByIdAndDeleted(winner_id, false)
+										.isEmpty()) {
+									Winner winner = new Winner(getUser(winner_id, loginSpotify().getAccess_token()),
+											winner_id,
+											LocalDateTime.now(),
+											guild);
+									winnerRepository.save(winner);
+								}
 
 								return event.getMessage()
 										.getChannel()
@@ -406,9 +454,63 @@ public class SpotifyBestSongWeeklyPoll implements CommandLineRunner {
 							})
 							.then();
 
+					Mono<Void> contest_day = gatewayDiscordClient.on(MessageCreateEvent.class, event -> {
+
+								if(!event.getMessage()
+										.getContent()
+										.split(" ")[0].equalsIgnoreCase("!day"))
+									return Mono.empty();
+
+								Message message = event.getMessage();
+
+								String dayStr = message.getContent()
+										.split(" ")[1];
+
+								ContestDay.Day day;
+
+								switch(dayStr) {
+									case "MONDAY":
+										day = MONDAY;
+										break;
+									case "TUESDAY":
+										day = TUESDAY;
+										break;
+									case "WEDNSDAY":
+										day = WEDNSDAY;
+										break;
+									case "THURSDAY":
+										day = THURSDAY;
+										break;
+									case "FRIDAY":
+										day = FRIDAY;
+										break;
+									case "SATURDAY":
+										day = SATURDAY;
+										break;
+									case "SUNDAY":
+										day = SUNDAY;
+										break;
+									default:
+										return event.getMessage().getChannel().flatMap(messageChannel -> messageChannel.createMessage("Insert correct DAY"));
+								}
+
+								Guild guild = guildRepository.getGuildByGuildidAndDeleted(message.getGuildId().get().asLong(), false);
+								if(guild == null) {
+									guild = new Guild(message.getGuildId().get().asLong(), false);
+									guildRepository.save(guild);
+								}
+
+								ContestDay contestDay = new ContestDay(guild, day, false);
+								contestDayRepository.save(contestDay);
+
+								return message.getChannel().flatMap(messageChannel -> messageChannel.createMessage("Contest day inserted correctly!"));
+							})
+							.then();
+
 					return testBot.and(contest)
 							.and(print)
-							.and(close);
+							.and(close)
+							.and(contest_day);
 				});
 		client.block();
 
@@ -449,15 +551,9 @@ public class SpotifyBestSongWeeklyPoll implements CommandLineRunner {
 
 			inPlaylist.close();
 
-			System.out.println("Items: " + responsePlaylist);
+			//System.out.println("Items: " + responsePlaylist);
 
 			playlistMapped = mapper.readValue(responsePlaylist.toString(), Playlist.class);
-
-			for(Items item : playlistMapped.getItems()) {
-				item.getAdded_by()
-						.setId(getUser(item.getAdded_by()
-								.getId(), accessToken));
-			}
 
 		} catch(IOException e) {
 			System.out.println("IO " + e.getMessage());
@@ -494,7 +590,7 @@ public class SpotifyBestSongWeeklyPoll implements CommandLineRunner {
 			}
 
 			inUser.close();
-			System.out.println("User: " + responseUser);
+			//System.out.println("User: " + responseUser);
 
 			return new JSONObject(responseUser.toString()
 					.replace(":", ": ")).getString("display_name");
@@ -539,7 +635,7 @@ public class SpotifyBestSongWeeklyPoll implements CommandLineRunner {
 
 			inSpec.close();
 
-			System.out.println("Spec: " + responseSpec);
+			//System.out.println("Spec: " + responseSpec);
 			playlistSpecMapped = mapper.readValue(responseSpec.toString(), PlaylistSpec.class);
 
 		} catch(IOException e) {
@@ -577,7 +673,7 @@ public class SpotifyBestSongWeeklyPoll implements CommandLineRunner {
 
 			inAll.close();
 
-			System.out.println("All: " + responseAll);
+			//System.out.println("All: " + responseAll);
 
 		} catch(Exception e) {
 			System.out.println(e.getMessage());
@@ -632,7 +728,7 @@ public class SpotifyBestSongWeeklyPoll implements CommandLineRunner {
 				responseLogin.append(outputLogin);
 			}
 
-			System.out.println("Login: " + responseLogin);
+			//System.out.println("Login: " + responseLogin);
 			inLogin.close();
 
 			loginMapped = mapper.readValue(responseLogin.toString(), Login.class);

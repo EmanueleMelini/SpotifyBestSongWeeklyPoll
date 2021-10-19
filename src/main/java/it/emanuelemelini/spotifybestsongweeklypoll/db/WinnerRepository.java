@@ -1,5 +1,6 @@
 package it.emanuelemelini.spotifybestsongweeklypoll.db;
 
+import it.emanuelemelini.spotifybestsongweeklypoll.db.model.Guild;
 import it.emanuelemelini.spotifybestsongweeklypoll.db.model.Winner;
 import org.springframework.data.repository.CrudRepository;
 import org.springframework.stereotype.Repository;
@@ -15,9 +16,11 @@ public interface WinnerRepository extends CrudRepository<Winner, Long> {
 
 	List<Winner> getWinnersByNameAndDeleted(String name, boolean deleted);
 
-	List<Winner> getWinnersByGuildidAndDeleted(long guildid, boolean deleted);
+	List<Winner> getWinnersByGuildAndDeleted(Guild guild, boolean deleted);
 
-	List<Winner> getWinnersByGuildidAndDeletedAndWinnerdate(long guildid, boolean deleted, LocalDateTime winnerdate);
+	List<Winner> getWinnersByGuildAndDeletedAndWinnerdate(Guild guild, boolean deleted, LocalDateTime winnerdate);
+
+	Winner findTopByGuildAndDeletedOrderByWinnerdateDesc(Guild guild, boolean deleted);
 
 	Winner getWinnersByIdwinner(long IDwinner);
 }

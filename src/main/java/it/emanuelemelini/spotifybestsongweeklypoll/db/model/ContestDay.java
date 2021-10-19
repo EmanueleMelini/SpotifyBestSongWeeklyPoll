@@ -11,17 +11,19 @@ public class ContestDay {
 	@Column(name = "idcontest_day")
 	private long idcontestday;
 
-	@Column(name = "guild_id")
-	private long guildid;
+	@ManyToOne
+	@JoinColumn(name = "guild_id")
+	private Guild guild;
 
+	@Enumerated(EnumType.STRING)
 	private Day day;
 
 	private boolean deleted;
 
 	protected ContestDay() {}
 
-	public ContestDay(long guildid, Day day, boolean deleted) {
-		this.guildid = guildid;
+	public ContestDay(Guild guild, Day day, boolean deleted) {
+		this.guild = guild;
 		this.day = day;
 		this.deleted = deleted;
 	}
@@ -30,18 +32,12 @@ public class ContestDay {
 		return idcontestday;
 	}
 
-	//TODO: manytoone
-
-	public void setIdcontestday(long idcontest_day) {
-		this.idcontestday = idcontest_day;
+	public Guild getGuild() {
+		return guild;
 	}
 
-	public long getGuildid() {
-		return guildid;
-	}
-
-	public void setGuildid(long guild_id) {
-		this.guildid = guild_id;
+	public void setGuild(Guild guild) {
+		this.guild = guild;
 	}
 
 	public Day getDay() {

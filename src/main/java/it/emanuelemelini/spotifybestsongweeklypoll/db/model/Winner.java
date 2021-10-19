@@ -25,26 +25,22 @@ public class Winner {
 	@Column(name = "winner_date")
 	private LocalDateTime winnerdate;
 
-	@Column(name = "guild_id")
-	private long guildid;
+	@ManyToOne
+	@JoinColumn(name = "guild_id")
+	private Guild guild;
 
 	protected Winner() {}
 
-	public Winner(String name, String id, LocalDateTime winnerdate) {
+	public Winner(String name, String id, LocalDateTime winnerdate, Guild guild) {
 		this.name = name;
 		this.id = id;
 		this.deleted = false;
 		this.winnerdate = winnerdate;
+		this.guild = guild;
 	}
-
-	//TODO: manytoone
 
 	public long getIdwinner() {
 		return idwinner;
-	}
-
-	public void setIdwinner(long IDwinner) {
-		this.idwinner = IDwinner;
 	}
 
 	public String getName() {
@@ -79,12 +75,12 @@ public class Winner {
 		this.winnerdate = winnerdate;
 	}
 
-	public long getGuildid() {
-		return guildid;
+	public Guild getGuild() {
+		return guild;
 	}
 
-	public void setGuildid(long guildid) {
-		this.guildid = guildid;
+	public void setGuild(Guild guild) {
+		this.guild = guild;
 	}
 
 }
