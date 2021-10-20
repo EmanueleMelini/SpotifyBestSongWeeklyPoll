@@ -20,7 +20,8 @@ public class ContestDay {
 
 	private boolean deleted;
 
-	protected ContestDay() {}
+	protected ContestDay() {
+	}
 
 	public ContestDay(Guild guild, Day day, boolean deleted) {
 		this.guild = guild;
@@ -56,6 +57,7 @@ public class ContestDay {
 		this.deleted = deleted;
 	}
 
+	//TODO: cambiare WEDNSDAY a WEDNSEDAY
 	public enum Day {
 		MONDAY,
 		TUESDAY,
@@ -65,4 +67,5 @@ public class ContestDay {
 		SATURDAY,
 		SUNDAY;
 	}
+
 }

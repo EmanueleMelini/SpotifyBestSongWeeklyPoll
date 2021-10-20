@@ -23,7 +23,8 @@ public class User {
 
 	private boolean deleted;
 
-	protected User() {}
+	protected User() {
+	}
 
 	public User(String spotifyid, String discordid, boolean deleted) {
 		this.spotifyid = spotifyid;

@@ -1,6 +1,7 @@
 package it.emanuelemelini.spotifybestsongweeklypoll.db.model;
 
 import javax.persistence.*;
+import java.util.Set;
 
 @Entity
 @Table(name = "guilds")
@@ -13,9 +14,19 @@ public class Guild {
 	@Column(name = "guild_id")
 	private long guildid;
 
+	@OneToMany(mappedBy = "guild")
+	private Set<Winner> winners;
+
+	@OneToMany(mappedBy = "guild")
+	private Set<ContestDay> contestDays;
+
+	@OneToMany(mappedBy = "guild")
+	private Set<User> users;
+
 	private boolean deleted;
 
-	protected Guild() {}
+	protected Guild() {
+	}
 
 	public Guild(long guildid, boolean deleted) {
 		this.guildid = guildid;
@@ -40,6 +51,18 @@ public class Guild {
 
 	public void setDeleted(boolean deleted) {
 		this.deleted = deleted;
+	}
+
+	public Set<Winner> getWinners() {
+		return winners;
+	}
+
+	public Set<ContestDay> getContestDays() {
+		return contestDays;
+	}
+
+	public Set<User> getUsers() {
+		return users;
 	}
 
 }

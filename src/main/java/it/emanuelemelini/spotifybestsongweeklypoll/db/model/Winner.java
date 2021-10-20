@@ -1,10 +1,7 @@
 package it.emanuelemelini.spotifybestsongweeklypoll.db.model;
 
-import lombok.Builder;
-
 import javax.persistence.*;
 import java.time.LocalDateTime;
-import java.util.Date;
 
 @Entity
 @Table(name = "winners")
@@ -17,6 +14,7 @@ public class Winner {
 	@Column(name = "spotify_name")
 	private String name;
 
+	//TODO: cambiare con user_id
 	@Column(name = "spotify_id")
 	private String id;
 
@@ -29,7 +27,8 @@ public class Winner {
 	@JoinColumn(name = "guild_id")
 	private Guild guild;
 
-	protected Winner() {}
+	protected Winner() {
+	}
 
 	public Winner(String name, String id, LocalDateTime winnerdate, Guild guild) {
 		this.name = name;
