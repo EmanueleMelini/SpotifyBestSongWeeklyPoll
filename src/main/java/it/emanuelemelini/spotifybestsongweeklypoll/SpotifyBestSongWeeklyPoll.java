@@ -455,12 +455,13 @@ public class SpotifyBestSongWeeklyPoll implements CommandLineRunner {
 									guildRepository.save(guild);
 								}
 
-								if(winnerRepository.getWinnersByIdAndDeleted(winner_id, false)
+								User user = userRepository.getUserBySpotifyidAndDeleted(winner_id, false);
+								if(user == null) {
+									user = new User(winner_id, 0, false);
+								}
+
+								if(winnerRepository.getWinnersByUserAndDeleted(user, false)
 										.isEmpty()) {
-									User user = userRepository.getUserBySpotifyidAndDeleted(winner_id, false);
-									if(user == null) {
-										user = new User(winner_id, 0, false);
-									}
 									Winner winner = new Winner(getUser(winner_id, loginSpotify().getAccess_token()),
 											user,
 											LocalDateTime.now(),
