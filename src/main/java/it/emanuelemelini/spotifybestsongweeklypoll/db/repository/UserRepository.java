@@ -17,4 +17,5 @@ public interface UserRepository extends CrudRepository<User, Long> {
 	User getUserByDiscordidAndSpotifyidAndDeleted(String discordid, String spotifyid, boolean deleted);
 
 	User getUserByIduser(long iduser);
+
 }

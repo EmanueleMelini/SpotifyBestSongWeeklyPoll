@@ -1,4 +1,4 @@
-package it.emanuelemelini.spotifybestsongweeklypoll.db;
+package it.emanuelemelini.spotifybestsongweeklypoll.db.repository;
 
 import it.emanuelemelini.spotifybestsongweeklypoll.db.model.ContestDay;
 import it.emanuelemelini.spotifybestsongweeklypoll.db.model.Guild;
@@ -15,4 +15,5 @@ public interface ContestDayRepository extends CrudRepository<ContestDay, Long> {
 	List<ContestDay> getContestDaysByDayAndDeleted(ContestDay.Day day, boolean deleted);
 
 	ContestDay getContestDayByIdcontestday(long IDcontestday);
+
 }

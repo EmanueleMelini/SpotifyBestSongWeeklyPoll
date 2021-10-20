@@ -1,4 +1,4 @@
-package it.emanuelemelini.spotifybestsongweeklypoll.db;
+package it.emanuelemelini.spotifybestsongweeklypoll.db.repository;
 
 import it.emanuelemelini.spotifybestsongweeklypoll.db.model.Guild;
 import org.springframework.data.repository.CrudRepository;

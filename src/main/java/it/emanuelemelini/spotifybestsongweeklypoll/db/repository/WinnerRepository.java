@@ -1,4 +1,4 @@
-package it.emanuelemelini.spotifybestsongweeklypoll.db;
+package it.emanuelemelini.spotifybestsongweeklypoll.db.repository;
 
 import it.emanuelemelini.spotifybestsongweeklypoll.db.model.Guild;
 import it.emanuelemelini.spotifybestsongweeklypoll.db.model.Winner;
@@ -6,7 +6,6 @@ import org.springframework.data.repository.CrudRepository;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
-import java.util.Date;
 import java.util.List;
 
 @Repository
@@ -23,4 +22,5 @@ public interface WinnerRepository extends CrudRepository<Winner, Long> {
 	Winner findTopByGuildAndDeletedOrderByWinnerdateDesc(Guild guild, boolean deleted);
 
 	Winner getWinnersByIdwinner(long IDwinner);
+
 }
