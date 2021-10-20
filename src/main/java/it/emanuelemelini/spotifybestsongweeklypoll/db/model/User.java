@@ -1,6 +1,7 @@
 package it.emanuelemelini.spotifybestsongweeklypoll.db.model;
 
 import javax.persistence.*;
+import java.util.Set;
 
 @Entity
 @Table(name = "users")
@@ -15,7 +16,7 @@ public class User {
 	private String spotifyid;
 
 	@Column(name = "discord_id")
-	private String discordid;
+	private long discordid;
 
 	@ManyToOne
 	@JoinColumn(name = "guild_id")
@@ -23,10 +24,13 @@ public class User {
 
 	private boolean deleted;
 
+	@OneToMany(mappedBy = "user")
+	private Set<Winner> winners;
+
 	protected User() {
 	}
 
-	public User(String spotifyid, String discordid, boolean deleted) {
+	public User(String spotifyid, long discordid, boolean deleted) {
 		this.spotifyid = spotifyid;
 		this.discordid = discordid;
 		this.deleted = deleted;
@@ -44,11 +48,11 @@ public class User {
 		this.spotifyid = spotifyid;
 	}
 
-	public String getDiscordid() {
+	public long getDiscordid() {
 		return discordid;
 	}
 
-	public void setDiscordid(String discordid) {
+	public void setDiscordid(long discordid) {
 		this.discordid = discordid;
 	}
 
@@ -66,6 +70,10 @@ public class User {
 
 	public void setDeleted(boolean deleted) {
 		this.deleted = deleted;
+	}
+
+	public Set<Winner> getWinners() {
+		return winners;
 	}
 
 }

@@ -14,9 +14,9 @@ public class Winner {
 	@Column(name = "spotify_name")
 	private String name;
 
-	//TODO: cambiare con user_id
-	@Column(name = "spotify_id")
-	private String id;
+	@ManyToOne
+	@JoinColumn(name = "user_id")
+	private User user;
 
 	private boolean deleted;
 
@@ -30,9 +30,9 @@ public class Winner {
 	protected Winner() {
 	}
 
-	public Winner(String name, String id, LocalDateTime winnerdate, Guild guild) {
+	public Winner(String name, User user, LocalDateTime winnerdate, Guild guild) {
 		this.name = name;
-		this.id = id;
+		this.user = user;
 		this.deleted = false;
 		this.winnerdate = winnerdate;
 		this.guild = guild;
@@ -50,12 +50,12 @@ public class Winner {
 		this.name = name;
 	}
 
-	public String getId() {
-		return id;
+	public User getUser() {
+		return user;
 	}
 
-	public void setId(String id) {
-		this.id = id;
+	public void setUser(User user) {
+		this.user = user;
 	}
 
 	public boolean isDeleted() {

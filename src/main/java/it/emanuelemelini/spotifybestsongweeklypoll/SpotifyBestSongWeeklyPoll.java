@@ -261,7 +261,7 @@ public class SpotifyBestSongWeeklyPoll implements CommandLineRunner {
 										if(!lastWinner.getWinnerdate()
 												.isBefore(LocalDateTime.now()
 														.minusDays(7))) {
-											last_winner = lastWinner.getId();
+											last_winner = lastWinner.getUser().getSpotifyid();
 										} else
 											last_winner = "";
 									} else
@@ -278,6 +278,11 @@ public class SpotifyBestSongWeeklyPoll implements CommandLineRunner {
 											.collect(Collectors.toList());
 
 									for(Items item : itemsFiltered) {
+
+										User user = userRepository.getUserBySpotifyidAndDeleted(item.getAdded_by().getId(), false);
+										if(user == null) {
+											return message.getChannel().flatMap(messageChannel -> messageChannel.createMessage("Link Spotify ID: " + item.getAdded_by().getId() + " to a Discord ID first!"));
+										}
 
 										fields.add(EmbedCreateFields.Field.of(emojisss[atEmbed.get()] + " " + item.getTrack()
 														.getName(),
@@ -450,8 +455,12 @@ public class SpotifyBestSongWeeklyPoll implements CommandLineRunner {
 
 								if(winnerRepository.getWinnersByIdAndDeleted(winner_id, false)
 										.isEmpty()) {
+									User user = userRepository.getUserBySpotifyidAndDeleted(winner_id, false);
+									if(user == null) {
+										user = new User(winner_id, 0, false);
+									}
 									Winner winner = new Winner(getUser(winner_id, loginSpotify().getAccess_token()),
-											winner_id,
+											user,
 											LocalDateTime.now(),
 											guild);
 									winnerRepository.save(winner);
@@ -537,10 +546,16 @@ public class SpotifyBestSongWeeklyPoll implements CommandLineRunner {
 
 								String spotify_id = str[1];
 
-								String discord_id = str[2];
-
 								MessageChannel channel = message.getChannel()
 										.block();
+
+								long discord_id;
+
+								try {
+									discord_id = Long.parseLong(str[2]);
+								} catch(NumberFormatException e) {
+									return channel.createMessage("Insert correct discord ID");
+								}
 
 								User userS = userRepository.getUserBySpotifyidAndDeleted(spotify_id, false);
 
