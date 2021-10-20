@@ -6,16 +6,19 @@ import discord4j.core.DiscordClient;
 import discord4j.core.GatewayDiscordClient;
 import discord4j.core.event.domain.message.MessageCreateEvent;
 import discord4j.core.object.entity.Message;
+import discord4j.core.object.entity.channel.MessageChannel;
 import discord4j.core.object.reaction.Reaction;
 import discord4j.core.object.reaction.ReactionEmoji;
 import discord4j.core.spec.EmbedCreateFields;
 import discord4j.core.spec.EmbedCreateSpec;
 import discord4j.rest.util.Color;
-import it.emanuelemelini.spotifybestsongweeklypoll.db.ContestDayRepository;
-import it.emanuelemelini.spotifybestsongweeklypoll.db.GuildRepository;
-import it.emanuelemelini.spotifybestsongweeklypoll.db.WinnerRepository;
+import it.emanuelemelini.spotifybestsongweeklypoll.db.repository.ContestDayRepository;
+import it.emanuelemelini.spotifybestsongweeklypoll.db.repository.GuildRepository;
+import it.emanuelemelini.spotifybestsongweeklypoll.db.repository.UserRepository;
+import it.emanuelemelini.spotifybestsongweeklypoll.db.repository.WinnerRepository;
 import it.emanuelemelini.spotifybestsongweeklypoll.db.model.ContestDay;
 import it.emanuelemelini.spotifybestsongweeklypoll.db.model.Guild;
+import it.emanuelemelini.spotifybestsongweeklypoll.db.model.User;
 import it.emanuelemelini.spotifybestsongweeklypoll.db.model.Winner;
 import it.emanuelemelini.spotifybestsongweeklypoll.lib.Items;
 import it.emanuelemelini.spotifybestsongweeklypoll.lib.Login;
@@ -51,14 +54,29 @@ import static it.emanuelemelini.spotifybestsongweeklypoll.db.model.ContestDay.Da
 @SpringBootApplication
 public class SpotifyBestSongWeeklyPoll implements CommandLineRunner {
 
+	/**
+	 * The {@link Winner} Table Query Repository
+	 */
 	@Autowired
 	private WinnerRepository winnerRepository;
 
+	/**
+	 * The {@link Guild} Table Query Repository
+	 */
 	@Autowired
 	private GuildRepository guildRepository;
 
+	/**
+	 * The {@link ContestDay} Table Query Repository
+	 */
 	@Autowired
 	private ContestDayRepository contestDayRepository;
+
+	/**
+	 * The {@link User} Table Query Repository
+	 */
+	@Autowired
+	private UserRepository userRepository;
 
 	/**
 	 * The SpotifyDeveloper Application clientID
@@ -245,19 +263,13 @@ public class SpotifyBestSongWeeklyPoll implements CommandLineRunner {
 
 									if(lastWinner != null) {
 										if(!lastWinner.getWinnerdate()
-												.isBefore(LocalDateTime.now().minusDays(7))) {
+												.isBefore(LocalDateTime.now()
+														.minusDays(7))) {
 											last_winner = lastWinner.getId();
 										} else
 											last_winner = "";
 									} else
 										last_winner = "";
-
-									/*
-									item -> winners.stream()
-													.noneMatch(winner -> winner.getId()
-															.equalsIgnoreCase(item.getAdded_by()
-																	.getId()))
-									 */
 
 									final List<Items> itemsFiltered = playlistMapped.getItems()
 											.stream()
@@ -271,6 +283,7 @@ public class SpotifyBestSongWeeklyPoll implements CommandLineRunner {
 
 									for(Items item : itemsFiltered) {
 
+										//TODO: check artisti duplicati
 										fields.add(EmbedCreateFields.Field.of(emojisss[atEmbed.get()] + " " + item.getTrack()
 														.getName(),
 												item.getTrack()
@@ -491,26 +504,78 @@ public class SpotifyBestSongWeeklyPoll implements CommandLineRunner {
 										day = SUNDAY;
 										break;
 									default:
-										return event.getMessage().getChannel().flatMap(messageChannel -> messageChannel.createMessage("Insert correct DAY"));
+										return event.getMessage()
+												.getChannel()
+												.flatMap(messageChannel -> messageChannel.createMessage("Insert correct DAY"));
 								}
 
-								Guild guild = guildRepository.getGuildByGuildidAndDeleted(message.getGuildId().get().asLong(), false);
+								Guild guild = guildRepository.getGuildByGuildidAndDeleted(message.getGuildId()
+										.get()
+										.asLong(), false);
 								if(guild == null) {
-									guild = new Guild(message.getGuildId().get().asLong(), false);
+									guild = new Guild(message.getGuildId()
+											.get()
+											.asLong(), false);
 									guildRepository.save(guild);
 								}
 
 								ContestDay contestDay = new ContestDay(guild, day, false);
 								contestDayRepository.save(contestDay);
 
-								return message.getChannel().flatMap(messageChannel -> messageChannel.createMessage("Contest day inserted correctly!"));
+								return message.getChannel()
+										.flatMap(messageChannel -> messageChannel.createMessage(
+												"Contest day inserted correctly!"));
+							})
+							.then();
+
+					Mono<Void> link_discord = gatewayDiscordClient.on(MessageCreateEvent.class, event -> {
+
+								Message message = event.getMessage();
+
+								if(!message.getContent()
+										.split(" ")[0].equalsIgnoreCase("!link"))
+									return Mono.empty();
+
+								String[] str = message.getContent()
+										.split(" ");
+
+								String spotify_id = str[1];
+
+								String discord_id = str[2];
+
+								MessageChannel channel = message.getChannel()
+										.block();
+
+								User userS = userRepository.getUserBySpotifyidAndDeleted(spotify_id, false);
+
+								if(userS != null)
+									return channel.createMessage("There is already a linked user with given Spotify ID!");
+
+								User userD = userRepository.getUserByDiscordidAndDeleted(discord_id, false);
+
+								if(userD != null)
+									return channel.createMessage("There is already a linked user with given Discord ID");
+
+								User userAll = userRepository.getUserByDiscordidAndSpotifyidAndDeleted(discord_id,
+										spotify_id,
+										false);
+
+								if(userAll == null) {
+									userAll = new User(spotify_id, discord_id, false);
+									userRepository.save(userAll);
+								} else
+									return channel.createMessage(
+											"There is already a linked user with given Spotify ID and Discord ID!");
+
+								return channel.createMessage("Spotify ID linked correctly to DIscord user");
 							})
 							.then();
 
 					return testBot.and(contest)
 							.and(print)
 							.and(close)
-							.and(contest_day);
+							.and(contest_day)
+							.and(link_discord);
 				});
 		client.block();
 
