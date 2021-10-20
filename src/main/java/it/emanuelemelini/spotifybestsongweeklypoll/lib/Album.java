@@ -19,8 +19,10 @@ public class Album {
 		s.append(this.artists.get(0).getName());
 
 		for(int i = 0; i < this.artists.size() && this.artists.size() > 1; i++) {
-			s.append(", ")
-					.append(this.artists.get(i).getName());
+			String artist = this.artists.get(i).getName();
+			if(!s.toString().contains(artist))
+				s.append(", ")
+					.append(artist);
 		}
 
 		return s.toString();

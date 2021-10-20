@@ -253,10 +253,6 @@ public class SpotifyBestSongWeeklyPoll implements CommandLineRunner {
 										return message.getChannel()
 												.flatMap(messageChannel -> messageChannel.createMessage("Insert Contest Day!"));
 
-
-									//TODO: change to getWinnersByGuildidAndDeletedAndWinnerdate()
-									List<Winner> winners = winnerRepository.getWinnersByGuildAndDeleted(guild, false);
-
 									Winner lastWinner = winnerRepository.findTopByGuildAndDeletedOrderByWinnerdateDesc(guild,
 											false);
 									String last_winner;
@@ -283,7 +279,6 @@ public class SpotifyBestSongWeeklyPoll implements CommandLineRunner {
 
 									for(Items item : itemsFiltered) {
 
-										//TODO: check artisti duplicati
 										fields.add(EmbedCreateFields.Field.of(emojisss[atEmbed.get()] + " " + item.getTrack()
 														.getName(),
 												item.getTrack()
@@ -392,6 +387,7 @@ public class SpotifyBestSongWeeklyPoll implements CommandLineRunner {
 									}
 								}
 
+								//TODO: Check vincitori a parimerito -> pensare se fare spareggio o altro
 								top.entrySet()
 										.stream()
 										.sorted(Map.Entry.comparingByValue(Comparator.reverseOrder()))
