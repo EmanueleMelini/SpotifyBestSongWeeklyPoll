@@ -408,6 +408,7 @@ public class SpotifyBestSongWeeklyPoll implements CommandLineRunner {
 								List<EmbedCreateFields.Field> fields = new LinkedList<>();
 
 								topSorted.forEach((key, value) -> {
+									//TODO: aggiungi autori
 									fields.add(EmbedCreateFields.Field.of(key.getTrackname(),
 											key.getSpotifyname() + " - Voti: " + (value - 1),
 											false));
