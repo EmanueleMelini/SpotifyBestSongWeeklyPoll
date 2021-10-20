@@ -430,6 +430,7 @@ public class SpotifyBestSongWeeklyPoll implements CommandLineRunner {
 										.description("Risultati contest:\n")
 										.addAllFields(fields)
 										.addField(EmbedCreateFields.Field.of("\u200b", "\u200b", false))
+										//TODO: mettere tag vincitore
 										.addField(EmbedCreateFields.Field.of("Il vicitore del contest è: " + winner_name +
 														"!\nRicorda che hai diritto a inserire ben due canzoni domani!",
 												"\u200b",
@@ -578,7 +579,7 @@ public class SpotifyBestSongWeeklyPoll implements CommandLineRunner {
 									return channel.createMessage(
 											"There is already a linked user with given Spotify ID and Discord ID!");
 
-								return channel.createMessage("Spotify ID linked correctly to DIscord user");
+								return channel.createMessage("Spotify ID linked correctly to Discord ID");
 							})
 							.then();
 
