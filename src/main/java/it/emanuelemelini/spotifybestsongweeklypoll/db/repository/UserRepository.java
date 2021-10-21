@@ -12,10 +12,10 @@ public interface UserRepository extends CrudRepository<User, Long> {
 
 	User getUserBySpotifyidAndDeleted(String spotifyid, boolean deleted);
 
-	User getUserByDiscordidAndDeleted(long discordid, boolean deleted);
+	User getUserByDiscordidAndDeleted(Long discordid, boolean deleted);
 
-	User getUserByDiscordidAndSpotifyidAndDeleted(long discordid, String spotifyid, boolean deleted);
+	User getUserByDiscordidAndSpotifyidAndDeleted(Long discordid, String spotifyid, boolean deleted);
 
-	User getUserByIduser(long iduser);
+	User getUserByIduser(Long iduser);
 
 }

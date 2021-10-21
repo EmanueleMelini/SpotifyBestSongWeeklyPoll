@@ -9,13 +9,13 @@ public class Guild {
 
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
-	private long idguild;
+	private Long idguild;
 
 	@Column(name = "guild_id")
-	private long guildid;
+	private Long guildid;
 
 	@Column(name = "role_id")
-	private long roleid;
+	private Long roleid;
 
 	@OneToMany(mappedBy = "guild")
 	private Set<Winner> winners;
@@ -31,20 +31,20 @@ public class Guild {
 	protected Guild() {
 	}
 
-	public Guild(long guildid, boolean deleted) {
+	public Guild(Long guildid, boolean deleted) {
 		this.guildid = guildid;
 		this.deleted = deleted;
 	}
 
-	public long getIdguild() {
+	public Long getIdguild() {
 		return idguild;
 	}
 
-	public long getGuildid() {
+	public Long getGuildid() {
 		return guildid;
 	}
 
-	public void setGuildid(long guildid) {
+	public void setGuildid(Long guildid) {
 		this.guildid = guildid;
 	}
 
@@ -56,11 +56,11 @@ public class Guild {
 		this.deleted = deleted;
 	}
 
-	public long getRoleid() {
+	public Long getRoleid() {
 		return roleid;
 	}
 
-	public void setRoleid(long roleid) {
+	public void setRoleid(Long roleid) {
 		this.roleid = roleid;
 	}
 

@@ -10,13 +10,13 @@ public class User {
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	@Column(name = "id_user")
-	private long iduser;
+	private Long iduser;
 
 	@Column(name = "spotify_id")
 	private String spotifyid;
 
 	@Column(name = "discord_id")
-	private long discordid;
+	private Long discordid;
 
 	@ManyToOne
 	@JoinColumn(name = "guild_id")
@@ -30,13 +30,13 @@ public class User {
 	protected User() {
 	}
 
-	public User(String spotifyid, long discordid, boolean deleted) {
+	public User(String spotifyid, Long discordid, boolean deleted) {
 		this.spotifyid = spotifyid;
 		this.discordid = discordid;
 		this.deleted = deleted;
 	}
 
-	public long getIduser() {
+	public Long getIduser() {
 		return iduser;
 	}
 
@@ -48,11 +48,11 @@ public class User {
 		this.spotifyid = spotifyid;
 	}
 
-	public long getDiscordid() {
+	public Long getDiscordid() {
 		return discordid;
 	}
 
-	public void setDiscordid(long discordid) {
+	public void setDiscordid(Long discordid) {
 		this.discordid = discordid;
 	}
 

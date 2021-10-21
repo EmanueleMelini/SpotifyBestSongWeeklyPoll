@@ -57,11 +57,10 @@ public class ContestDay {
 		this.deleted = deleted;
 	}
 
-	//TODO: cambiare WEDNSDAY a WEDNSEDAY
 	public enum Day {
 		MONDAY,
 		TUESDAY,
-		WEDNSDAY,
+		WEDNESDAY,
 		THURSDAY,
 		FRIDAY,
 		SATURDAY,
