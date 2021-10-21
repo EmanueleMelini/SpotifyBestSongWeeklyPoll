@@ -14,6 +14,9 @@ public class Guild {
 	@Column(name = "guild_id")
 	private long guildid;
 
+	@Column(name = "role_id")
+	private long roleid;
+
 	@OneToMany(mappedBy = "guild")
 	private Set<Winner> winners;
 
@@ -51,6 +54,14 @@ public class Guild {
 
 	public void setDeleted(boolean deleted) {
 		this.deleted = deleted;
+	}
+
+	public long getRoleid() {
+		return roleid;
+	}
+
+	public void setRoleid(long roleid) {
+		this.roleid = roleid;
 	}
 
 	public Set<Winner> getWinners() {

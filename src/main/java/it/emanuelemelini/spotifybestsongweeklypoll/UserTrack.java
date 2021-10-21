@@ -13,4 +13,6 @@ public class UserTrack {
 
 	private String trackname;
 
+	private String trackauthors;
+
 }
