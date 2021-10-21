@@ -447,7 +447,7 @@ public class SpotifyBestSongWeeklyPoll implements CommandLineRunner {
 										.stream()
 										.count() > 1) {
 									tieBreaker(tieMap, channel, message);
-									channel.createMessage("Starting tie breaker...");
+									return channel.createMessage("Starting tie breaker...");
 								}
 
 								String thumbnail = playlistSpecThis.getImages()
