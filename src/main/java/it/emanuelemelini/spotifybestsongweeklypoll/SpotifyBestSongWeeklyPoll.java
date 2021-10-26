@@ -695,12 +695,45 @@ public class SpotifyBestSongWeeklyPoll implements CommandLineRunner {
 							})
 							.then();
 
+					Mono<Void> force_stop = gatewayDiscordClient.on(MessageCreateEvent.class, event -> {
+
+								if(!event.getMessage()
+										.getContent()
+										.split(" ")[0].equalsIgnoreCase("!forcestop"))
+									return Mono.empty();
+
+								Message message = event.getMessage();
+								MessageChannel channel = message.getChannel()
+										.block();
+
+								if(messID == null)
+									return channel.createMessage("There is no started contest to stop!");
+
+								Message contest_message;
+
+								try {
+									contest_message = channel.getMessageById(messID)
+											.block();
+								} catch(NullPointerException e) {
+									System.out.println(e.getMessage());
+									return channel.createMessage("Start contest first!");
+								}
+
+								contest_message.removeAllReactions();
+
+								messID = null;
+
+								return channel.createMessage("Contest stopped correctly");
+							})
+							.then();
+
 					return testBot.and(contest)
 							.and(print)
 							.and(close)
 							.and(contest_day)
 							.and(link_discord)
-							.and(role_discord);
+							.and(role_discord)
+							.and(force_stop);
 				});
 		client.block();
 
