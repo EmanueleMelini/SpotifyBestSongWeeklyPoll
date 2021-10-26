@@ -30,10 +30,11 @@ public class User {
 	protected User() {
 	}
 
-	public User(String spotifyid, Long discordid, boolean deleted) {
+	public User(String spotifyid, Long discordid, boolean deleted, Guild guild) {
 		this.spotifyid = spotifyid;
 		this.discordid = discordid;
 		this.deleted = deleted;
+		this.guild = guild;
 	}
 
 	public Long getIduser() {
