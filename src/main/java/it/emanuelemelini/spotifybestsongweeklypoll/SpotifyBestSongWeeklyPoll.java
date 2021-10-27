@@ -1018,7 +1018,7 @@ public class SpotifyBestSongWeeklyPoll implements CommandLineRunner {
 		//TODO: generalizzare il controllo da solo mercoledì a un giorno scelto da comando e salvato su db
 
 		LocalDateTime ora = LocalDateTime.now();
-		ora = ora.withHour(0)
+		ora = ora.withHour(20)
 				.withMinute(0)
 				.withSecond(0);
 		int days;
