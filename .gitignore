@@ -2,4 +2,5 @@
 .idea
 *.iml
 *.txt
+src/main/java/it/emanuelemelini/spotifybestsongweeklypoll/Test.java
 application.properties
