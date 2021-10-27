@@ -525,7 +525,7 @@ public class SpotifyBestSongWeeklyPoll implements CommandLineRunner {
 										.addField(EmbedCreateFields.Field.of("\u200b", "\u200b", false))
 										.addField(EmbedCreateFields.Field.of(
 												"Il vicitore del contest è: " + winner_d.getMention() +
-														"!\nRicorda che hai diritto a inserire ben due canzoni domani!",
+														" !\nRicorda che hai diritto a inserire ben due canzoni domani!",
 												"\u200b",
 												true))
 										.thumbnail(thumbnail)
