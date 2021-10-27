@@ -451,6 +451,9 @@ public class SpotifyBestSongWeeklyPoll implements CommandLineRunner {
 												.equals(count_win))
 										.forEach(x -> tieMap.put(x.getKey(), x.getValue()));
 
+								contest_message.removeAllReactions()
+										.block();
+
 								if(tieMap.entrySet()
 										.size() > 1) {
 									tieBreaker(tieMap, channel, message);
@@ -524,17 +527,14 @@ public class SpotifyBestSongWeeklyPoll implements CommandLineRunner {
 										.addAllFields(fields)
 										.addField(EmbedCreateFields.Field.of("\u200b", "\u200b", false))
 										.addField(EmbedCreateFields.Field.of(
-												"Il vicitore del contest è: " + winner_d.getMention() +
-														" !\nRicorda che hai diritto a inserire ben due canzoni domani!",
+												"Il vicitore del contest è: **" + winner_d.getDisplayName() +
+														"**!\nRicorda che hai diritto a inserire ben due canzoni domani!",
 												"\u200b",
 												true))
 										.thumbnail(thumbnail)
 										.url(href)
 										.timestamp(Instant.now())
 										.build();
-
-								contest_message.removeAllReactions()
-										.block();
 
 								if(winnerRepository.getWinnersByUserAndDeleted(user, false)
 										.isEmpty()) {
@@ -1134,7 +1134,7 @@ public class SpotifyBestSongWeeklyPoll implements CommandLineRunner {
 
 		messID = mess_tie.getId();
 
-		trackList.forEach(s -> mess_tie.addReaction(ReactionEmoji.unicode(emojisss[atCount.getAndIncrement()])));
+		fields.forEach(field -> mess_tie.addReaction(ReactionEmoji.unicode(emojisss[atCount.getAndIncrement()])));
 
 	}
 
