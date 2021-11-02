@@ -108,6 +108,11 @@ public class SpotifyBestSongWeeklyPoll implements CommandLineRunner {
 	private Snowflake messID;
 
 	/**
+	 * The Discord message contest tie Snowflake
+	 */
+	private Snowflake tieMessID;
+
+	/**
 	 * A JSON Object that contains the Spotify Playlist specification
 	 */
 	private PlaylistSpec playlistSpecThis;
@@ -298,6 +303,8 @@ public class SpotifyBestSongWeeklyPoll implements CommandLineRunner {
 												.equalsIgnoreCase(last_winner))
 										.collect(Collectors.toList());
 
+								String accesstoken = loginSpotify().getAccess_token();
+
 								for(Items item : itemsFiltered) {
 
 									User user = userRepository.getUserBySpotifyidAndDeleted(item.getAdded_by()
@@ -322,7 +329,7 @@ public class SpotifyBestSongWeeklyPoll implements CommandLineRunner {
 									UserTrack userTrack = new UserTrack(item.getAdded_by()
 											.getId(),
 											getUser(item.getAdded_by()
-													.getId(), loginSpotify().getAccess_token()),
+													.getId(), accesstoken),
 											item.getTrack()
 													.getName(),
 											item.getTrack()
@@ -454,10 +461,17 @@ public class SpotifyBestSongWeeklyPoll implements CommandLineRunner {
 								contest_message.removeAllReactions()
 										.block();
 
+								AtomicInteger atTie = new AtomicInteger(0);
+
 								if(tieMap.entrySet()
 										.size() > 1) {
-									tieBreaker(tieMap, channel, message);
-									return channel.createMessage("Starting tie breaker...");
+									songReaction.clear();
+									tieMap.forEach((userTrack, votes) -> {
+										songReaction.put(emojisss[atTie.get()], userTrack);
+									});
+									tieMessID = messID;
+									messID = null;
+									return channel.createMessage("Contest ended with a tie, start tiebreaker with !tie.");
 								}
 
 								String thumbnail = playlistSpecThis.getImages()
@@ -771,13 +785,132 @@ public class SpotifyBestSongWeeklyPoll implements CommandLineRunner {
 							})
 							.then();
 
+					Mono<Void> tie_breaker = gatewayDiscordClient.on(MessageCreateEvent.class, event -> {
+
+								if(!event.getMessage()
+										.getContent()
+										.split(" ")[0].equalsIgnoreCase("!tie"))
+									return Mono.empty();
+
+								Message message = event.getMessage();
+
+								if(tieMessID != null)
+									return message.getChannel()
+											.flatMap(messageChannel -> messageChannel.createMessage(
+													"There is already a tiebreaker contest!"));
+
+								if(messID != null)
+									return message.getChannel()
+											.flatMap(messageChannel -> messageChannel.createMessage(
+													"There is a contest ongoing!"));
+
+								String[] command = message.getContent()
+										.split(" ");
+								MessageChannel channel = message.getChannel()
+										.block();
+
+								if(channel == null)
+									return Mono.empty();
+
+								List<EmbedCreateFields.Field> fields = new LinkedList<>();
+
+								AtomicInteger atEmbed = new AtomicInteger(0);
+
+								//TODO: check messaggi di errore nelle chiamate (es playlist ID non valido/trovato)
+
+								Guild guild = guildRepository.getGuildByGuildidAndDeleted(message.getGuildId()
+										.get()
+										.asLong(), false);
+
+								if(guild == null) {
+									guild = new Guild(message.getGuildId()
+											.get()
+											.asLong(), false);
+									guildRepository.save(guild);
+								}
+
+								ContestDay contestDay = contestDayRepository.getContestDayByGuildAndDeleted(guild, false);
+
+								if(contestDay == null)
+									return message.getChannel()
+											.flatMap(messageChannel -> messageChannel.createMessage("Insert Contest Day!"));
+
+								songReaction.forEach((reaction, userTrack) -> {
+
+									fields.add(EmbedCreateFields.Field.of(
+											emojisss[atEmbed.get()] + " " + userTrack.getTrackname(),
+											userTrack.getTrackauthors(),
+											true));
+
+									if(atEmbed.get() % 2 == 1)
+										fields.add(EmbedCreateFields.Field.of("\u200b", "\u200b", true));
+
+									//System.out.println("UserTrack: " + userTrack);
+
+									atEmbed.getAndIncrement();
+								});
+
+								discord4j.core.object.entity.Guild discord_guild = message.getGuild()
+										.block();
+
+								if(discord_guild == null)
+									return Mono.empty();
+
+								boolean role_ = guild.getRoleid() != null && guild.getRoleid() != 0;
+
+								Role role = role_ ? discord_guild.getRoleById(Snowflake.of(guild.getRoleid()))
+										.block() : null;
+
+								if(role == null && role_)
+									return message.getChannel()
+											.flatMap(messageChannel -> messageChannel.createMessage(
+													"Role not found with saved ID"));
+
+								//System.out.println(songReaction);
+
+								EmbedCreateSpec embed = EmbedCreateSpec.builder()
+										.title("Tie breaker")
+										.author(EmbedCreateFields.Author.of("Emanuele Melini",
+												"https://github.com/EmanueleMelini",
+												"https://avatars.githubusercontent.com/u/73402425?v=4"))
+										.color(Color.GREEN)
+										.description((role_ ? role.getMention() + "\n" : "") +
+												"Spareggio della votazione settimanale.\nRegole:\n - In caso di spareggio a 2 i contendenti non possono votare.")
+										.addAllFields(fields)
+										.thumbnail(playlistSpecThis.getImages()
+												.get(0)
+												.getUrl())
+										.url(playlistSpecThis.getExternal_urls()
+												.getSpotify())
+										.timestamp(Instant.now())
+										.build();
+
+								AtomicInteger atCount = new AtomicInteger(0);
+
+
+								return Mono.from(channel.createMessage(MessageCreateSpec.create()
+												.withEmbeds(embed)
+												.withAllowedMentions(AllowedMentions.builder()
+														.allowRole(role_ ? role.getId() : Snowflake.of(0))
+														.build()))
+										.flatMap(msg -> {
+											messID = msg.getId();
+											return Mono.from(Flux.fromStream(songReaction.keySet()
+															.stream())
+													.flatMap(track -> msg.addReaction(ReactionEmoji.unicode(emojisss[atCount.getAndIncrement()]))));
+										}));
+
+							})
+							.then();
+
 					return testBot.and(contest)
 							.and(print)
 							.and(close)
 							.and(contest_day)
 							.and(link_discord)
 							.and(role_discord)
-							.and(force_stop);
+							.and(force_stop)
+							.and(tie_breaker);
 				});
 		client.block();
 
@@ -1052,90 +1185,6 @@ public class SpotifyBestSongWeeklyPoll implements CommandLineRunner {
 
 		return ora.minusDays(days)
 				.isBefore(date);
-	}
-
-	private void tieBreaker(LinkedHashMap<UserTrack, Integer> map, MessageChannel channel, Message message) {
-
-		songReaction.clear();
-
-		List<EmbedCreateFields.Field> fields = new LinkedList<>();
-
-		AtomicInteger atEmbed = new AtomicInteger(0);
-
-		List<String> trackList = new LinkedList<>();
-
-		map.forEach((userTrack, integer) -> {
-
-			fields.add(EmbedCreateFields.Field.of(emojisss[atEmbed.get()] + " " + userTrack.getTrackname(),
-					userTrack.getTrackauthors(),
-					true));
-
-			if(atEmbed.get() % 2 == 1)
-				fields.add(EmbedCreateFields.Field.of("\u200b", "\u200b", true));
-
-			songReaction.put(emojisss[atEmbed.get()], userTrack);
-
-			trackList.add(userTrack.getTrackname());
-
-			atEmbed.getAndIncrement();
-		});
-
-		discord4j.core.object.entity.Guild discord_guild = message.getGuild()
-				.block();
-
-		if(discord_guild == null)
-			return;
-
-		Guild guild = guildRepository.getGuildByGuildidAndDeleted(message.getGuildId()
-				.get()
-				.asLong(), false);
-
-		boolean role_ = guild.getRoleid() != null && guild.getRoleid() != 0;
-
-		Role role = role_ ? discord_guild.getRoleById(Snowflake.of(guild.getRoleid()))
-				.block() : null;
-
-		if(role == null && role_) {
-			channel.createMessage("Role not found with saved ID");
-			return;
-		}
-
-		EmbedCreateSpec embed = EmbedCreateSpec.builder()
-				.title("Tie Breaker")
-				.author(EmbedCreateFields.Author.of("Emanuele Melini",
-						"https://github.com/EmanueleMelini",
-						"https://avatars.githubusercontent.com/u/73402425?v=4"))
-				.color(Color.GREEN)
-				.description((role_ ? role.getMention() + "\n" : "") +
-						"Spareggio della votazione settimanale.\nRegole:\n - In caso di spareggio a 2 i contendenti non possono votare.")
-				.addAllFields(fields)
-				.thumbnail(playlistSpecThis.getImages()
-						.get(0)
-						.getUrl())
-				.url(playlistSpecThis.getExternal_urls()
-						.getSpotify())
-				.timestamp(Instant.now())
-				.build();
-
-		AtomicInteger atCount = new AtomicInteger(0);
-
-		Message mess_tie = channel.createMessage(MessageCreateSpec.create()
-						.withEmbeds(embed)
-						.withAllowedMentions(AllowedMentions.builder()
-								.allowRole(role_ ? role.getId() : Snowflake.of(0))
-								.build()))
-				.block();
-
-		if(mess_tie == null) {
-			messID = null;
-			channel.createMessage("Contest not created, internal error");
-			return;
-		}
-
-		messID = mess_tie.getId();
-
-		fields.forEach(field -> mess_tie.addReaction(ReactionEmoji.unicode(emojisss[atCount.getAndIncrement()])));
-
 	}
 
 	public static void main(String[] args) {
