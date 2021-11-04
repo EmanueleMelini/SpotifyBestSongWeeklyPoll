@@ -419,6 +419,11 @@ public class SpotifyBestSongWeeklyPoll implements CommandLineRunner {
 										.noneMatch(Reaction::selfReacted))
 									return channel.createMessage("Contest already closed!");
 
+								boolean test = false;
+								if(message.getContent().split(" ").length == 2)
+									if(message.getContent().split(" ")[1].equalsIgnoreCase("-t"))
+										test = true;
+
 								List<Reaction> reactions = contest_message.getReactions();
 
 								Map<UserTrack, Integer> top = new HashMap<>();
@@ -467,7 +472,7 @@ public class SpotifyBestSongWeeklyPoll implements CommandLineRunner {
 										.size() > 1) {
 									songReaction.clear();
 									tieMap.forEach((userTrack, votes) -> {
-										songReaction.put(emojisss[atTie.get()], userTrack);
+										songReaction.put(emojisss[atTie.getAndIncrement()], userTrack);
 									});
 									tieMessID = messID;
 									messID = null;
@@ -532,7 +537,7 @@ public class SpotifyBestSongWeeklyPoll implements CommandLineRunner {
 									return channel.createMessage("Role not found with saved ID");
 
 								EmbedCreateSpec embed = EmbedCreateSpec.builder()
-										.title("Weekly poll")
+										.title("Weekly poll" + (test ? " **[Test]**" : ""))
 										.author(EmbedCreateFields.Author.of("Emanuele Melini",
 												"https://github.com/EmanueleMelini",
 												"https://avatars.githubusercontent.com/u/73402425?v=4"))
@@ -556,7 +561,8 @@ public class SpotifyBestSongWeeklyPoll implements CommandLineRunner {
 											user,
 											LocalDateTime.now(),
 											guild);
-									winnerRepository.save(winner);
+									if(!test)
+										winnerRepository.save(winner);
 								}
 
 								messID = null;
@@ -838,7 +844,7 @@ public class SpotifyBestSongWeeklyPoll implements CommandLineRunner {
 								songReaction.forEach((reaction, userTrack) -> {
 
 									fields.add(EmbedCreateFields.Field.of(
-											emojisss[atEmbed.get()] + " " + userTrack.getTrackname(),
+											emojisss[atEmbed.getAndIncrement()] + " " + userTrack.getTrackname(),
 											userTrack.getTrackauthors(),
 											true));
 
