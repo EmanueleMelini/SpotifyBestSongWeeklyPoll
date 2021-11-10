@@ -284,7 +284,13 @@ public class SpotifyBestSongWeeklyPoll implements CommandLineRunner {
 
 								if(lastWinner != null) {
 									if(!lastWinner.getWinnerdate()
+											.withHour(23)
+											.withMinute(59)
+											.withSecond(59)
 											.isBefore(LocalDateTime.now()
+													.withHour(0)
+													.withMinute(0)
+													.withSecond(1)
 													.minusDays(7))) {
 										last_winner = lastWinner.getUser()
 												.getSpotifyid();
@@ -292,6 +298,8 @@ public class SpotifyBestSongWeeklyPoll implements CommandLineRunner {
 										last_winner = "";
 								} else
 									last_winner = "";
+
+								System.out.println("Last winner: " + last_winner);
 
 								final List<Items> itemsFiltered = playlistMapped.getItems()
 										.stream()
@@ -420,8 +428,10 @@ public class SpotifyBestSongWeeklyPoll implements CommandLineRunner {
 									return channel.createMessage("Contest already closed!");
 
 								boolean test = false;
-								if(message.getContent().split(" ").length == 2)
-									if(message.getContent().split(" ")[1].equalsIgnoreCase("-t"))
+								if(message.getContent()
+										.split(" ").length == 2)
+									if(message.getContent()
+											.split(" ")[1].equalsIgnoreCase("-t"))
 										test = true;
 
 								List<Reaction> reactions = contest_message.getReactions();
@@ -783,7 +793,8 @@ public class SpotifyBestSongWeeklyPoll implements CommandLineRunner {
 								if(contest_message == null)
 									return channel.createMessage("No contest found, internal error");
 
-								contest_message.removeAllReactions();
+								contest_message.removeAllReactions()
+										.block();
 
 								messID = null;
 
