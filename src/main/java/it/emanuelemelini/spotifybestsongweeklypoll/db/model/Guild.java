@@ -26,6 +26,9 @@ public class Guild {
 	@OneToMany(mappedBy = "guild")
 	private Set<User> users;
 
+	@OneToMany(mappedBy = "guild")
+	private Set<Contest> contests;
+
 	private boolean deleted;
 
 	protected Guild() {
@@ -74,6 +77,10 @@ public class Guild {
 
 	public Set<User> getUsers() {
 		return users;
+	}
+
+	public Set<Contest> getContests() {
+		return contests;
 	}
 
 }

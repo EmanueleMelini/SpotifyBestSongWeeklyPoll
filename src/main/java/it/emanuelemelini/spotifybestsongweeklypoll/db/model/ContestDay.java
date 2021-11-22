@@ -1,6 +1,7 @@
 package it.emanuelemelini.spotifybestsongweeklypoll.db.model;
 
 import javax.persistence.*;
+import java.time.DayOfWeek;
 
 @Entity
 @Table(name = "contest_day")
@@ -16,14 +17,14 @@ public class ContestDay {
 	private Guild guild;
 
 	@Enumerated(EnumType.STRING)
-	private Day day;
+	private DayOfWeek day;
 
 	private boolean deleted;
 
 	protected ContestDay() {
 	}
 
-	public ContestDay(Guild guild, Day day, boolean deleted) {
+	public ContestDay(Guild guild, DayOfWeek day, boolean deleted) {
 		this.guild = guild;
 		this.day = day;
 		this.deleted = deleted;
@@ -41,11 +42,11 @@ public class ContestDay {
 		this.guild = guild;
 	}
 
-	public Day getDay() {
+	public DayOfWeek getDay() {
 		return day;
 	}
 
-	public void setDay(Day day) {
+	public void setDay(DayOfWeek day) {
 		this.day = day;
 	}
 
@@ -57,6 +58,7 @@ public class ContestDay {
 		this.deleted = deleted;
 	}
 
+	/*
 	public enum Day {
 		MONDAY,
 		TUESDAY,
@@ -66,5 +68,6 @@ public class ContestDay {
 		SATURDAY,
 		SUNDAY;
 	}
+	 */
 
 }

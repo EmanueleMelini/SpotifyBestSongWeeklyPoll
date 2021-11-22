@@ -5,6 +5,7 @@ import discord4j.common.util.Snowflake;
 import discord4j.core.DiscordClient;
 import discord4j.core.GatewayDiscordClient;
 import discord4j.core.event.domain.message.MessageCreateEvent;
+import discord4j.core.event.domain.message.ReactionAddEvent;
 import discord4j.core.object.entity.Member;
 import discord4j.core.object.entity.Message;
 import discord4j.core.object.entity.Role;
@@ -13,6 +14,7 @@ import discord4j.core.object.reaction.Reaction;
 import discord4j.core.object.reaction.ReactionEmoji;
 import discord4j.core.spec.EmbedCreateFields;
 import discord4j.core.spec.EmbedCreateSpec;
+import discord4j.core.spec.GuildMemberEditSpec;
 import discord4j.core.spec.MessageCreateSpec;
 import discord4j.rest.util.AllowedMentions;
 import discord4j.rest.util.Color;
@@ -43,6 +45,7 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.time.DayOfWeek;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -50,7 +53,7 @@ import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
-import static it.emanuelemelini.spotifybestsongweeklypoll.db.model.ContestDay.Day.*;
+import static java.time.DayOfWeek.*;
 
 /**
  * A Discord bot that create a contest for voting the best song on the given playlist ID
@@ -209,6 +212,90 @@ public class SpotifyBestSongWeeklyPoll implements CommandLineRunner {
 							})
 							.then();
 
+					Mono<Void> disconnectLennosc = gatewayDiscordClient.on(MessageCreateEvent.class, event -> {
+
+								if(event.getMessage()
+										.getContent()
+										.contains("osudisc")) {
+									return event.getMessage()
+											.getGuild()
+											.flatMap(guild -> guild.getMemberById(Snowflake.of(324603556277780490L))
+													.flatMap(member -> member.edit(GuildMemberEditSpec.builder()
+															.newVoiceChannelOrNull(null)
+															.build())))
+											.then(event.getMessage()
+													.getChannel()
+													.flatMap(messageChannel -> messageChannel.createMessage("Zitto OSU Lennosc!")));
+								} else
+									return Mono.empty();
+							})
+							.then();
+
+					Mono<Void> kickLennosc = gatewayDiscordClient.on(MessageCreateEvent.class, event -> {
+
+								if(event.getMessage()
+										.getContent()
+										.contains("osukick")) {
+									return event.getMessage()
+											.getGuild()
+											.flatMap(guild -> guild.kick(Snowflake.of(324603556277780490L), "OSU"))
+											.then(event.getMessage()
+													.getChannel()
+													.flatMap(channel -> channel.createMessage("Addio OSU Lennosc!")));
+								} else
+									return Mono.empty();
+
+							})
+							.then();
+
+					Mono<Void> reactionEvent = gatewayDiscordClient.on(ReactionAddEvent.class, event -> {
+
+								if(messID == null)
+									return Mono.empty();
+
+								Message message = event.getMessage()
+										.block();
+
+								if(message == null)
+									return Mono.empty();
+
+								if(!message.getId()
+										.equals(messID))
+									return Mono.empty();
+
+								MessageChannel channel = message.getChannel()
+										.block();
+
+								if(channel == null)
+									return Mono.empty();
+
+								Optional<Member> member = event.getMember();
+
+								if(member.isPresent()) {
+									if(message.getReactions()
+											.stream()
+											.anyMatch(reaction -> reaction.getData()
+													.emoji()
+													.user()
+													.get()
+													.id()
+													.asLong() == member.get()
+													.getMemberData()
+													.user()
+													.id()
+													.asLong())) {
+										message.removeReaction(event.getEmoji(), event.getUserId());
+										return channel.createMessage(member.get()
+												.getDisplayName() +
+												" - You already voted! Remove your vote before voting another song!");
+									}
+								}
+
+								return Mono.empty();
+
+							})
+							.then();
+
 					Mono<Void> contest = gatewayDiscordClient.on(MessageCreateEvent.class, event -> {
 
 								if(!event.getMessage()
@@ -304,8 +391,10 @@ public class SpotifyBestSongWeeklyPoll implements CommandLineRunner {
 								final List<Items> itemsFiltered = playlistMapped.getItems()
 										.stream()
 										.filter(item -> checkDate(LocalDateTime.parse(item.getAdded_at()
-												.replace("T", " ")
-												.replace("Z", ""), formatter)))
+														.replace("T", " ")
+														.replace("Z", ""), formatter),
+												contestDay.getDay()
+														.getValue()))
 										.filter(item -> !item.getAdded_by()
 												.getId()
 												.equalsIgnoreCase(last_winner))
@@ -604,7 +693,8 @@ public class SpotifyBestSongWeeklyPoll implements CommandLineRunner {
 
 								String dayStr = content[1];
 
-								ContestDay.Day day;
+								//ContestDay.Day day;
+								DayOfWeek day;
 
 								switch(dayStr) {
 									case "MONDAY":
@@ -927,7 +1017,10 @@ public class SpotifyBestSongWeeklyPoll implements CommandLineRunner {
 							.and(link_discord)
 							.and(role_discord)
 							.and(force_stop)
-							.and(tie_breaker);
+							.and(tie_breaker)
+							.and(disconnectLennosc)
+							.and(kickLennosc)
+							.and(reactionEvent);
 				});
 		client.block();
 
@@ -1163,16 +1256,19 @@ public class SpotifyBestSongWeeklyPoll implements CommandLineRunner {
 	 * @param date The Date to be checked
 	 * @return A boolean: true if the Date is after, false if the Date is before
 	 */
-	public boolean checkDate(LocalDateTime date) {
+	public boolean checkDate(LocalDateTime date, int contestDay) {
 
-		//TODO: generalizzare il controllo da solo mercoledì a un giorno scelto da comando e salvato su db
-
-		LocalDateTime ora = LocalDateTime.now();
-		ora = ora.withHour(20)
+		LocalDateTime ora = LocalDateTime.now()
+				.withHour(20)
 				.withMinute(0)
 				.withSecond(0);
-		int days;
 
+		int days = date.getDayOfWeek()
+				.getValue() - contestDay;
+
+		days = days <= 0 ? days + 7 : days;
+
+		/*
 		switch(ora.getDayOfWeek()) {
 			case MONDAY:
 				days = 5;
@@ -1199,6 +1295,7 @@ public class SpotifyBestSongWeeklyPoll implements CommandLineRunner {
 				days = 0;
 				break;
 		}
+		 */
 
 		return ora.minusDays(days)
 				.isBefore(date);
