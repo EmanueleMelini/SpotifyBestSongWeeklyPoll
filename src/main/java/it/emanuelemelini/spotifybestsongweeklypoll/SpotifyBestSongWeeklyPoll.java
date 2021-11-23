@@ -6,6 +6,7 @@ import discord4j.core.DiscordClient;
 import discord4j.core.GatewayDiscordClient;
 import discord4j.core.event.domain.message.MessageCreateEvent;
 import discord4j.core.event.domain.message.ReactionAddEvent;
+import discord4j.core.event.domain.message.ReactionRemoveEvent;
 import discord4j.core.object.entity.Member;
 import discord4j.core.object.entity.Message;
 import discord4j.core.object.entity.Role;
@@ -18,14 +19,8 @@ import discord4j.core.spec.GuildMemberEditSpec;
 import discord4j.core.spec.MessageCreateSpec;
 import discord4j.rest.util.AllowedMentions;
 import discord4j.rest.util.Color;
-import it.emanuelemelini.spotifybestsongweeklypoll.db.model.ContestDay;
-import it.emanuelemelini.spotifybestsongweeklypoll.db.model.Guild;
-import it.emanuelemelini.spotifybestsongweeklypoll.db.model.User;
-import it.emanuelemelini.spotifybestsongweeklypoll.db.model.Winner;
-import it.emanuelemelini.spotifybestsongweeklypoll.db.repository.ContestDayRepository;
-import it.emanuelemelini.spotifybestsongweeklypoll.db.repository.GuildRepository;
-import it.emanuelemelini.spotifybestsongweeklypoll.db.repository.UserRepository;
-import it.emanuelemelini.spotifybestsongweeklypoll.db.repository.WinnerRepository;
+import it.emanuelemelini.spotifybestsongweeklypoll.db.model.*;
+import it.emanuelemelini.spotifybestsongweeklypoll.db.repository.*;
 import it.emanuelemelini.spotifybestsongweeklypoll.lib.Items;
 import it.emanuelemelini.spotifybestsongweeklypoll.lib.Login;
 import it.emanuelemelini.spotifybestsongweeklypoll.lib.Playlist;
@@ -84,6 +79,12 @@ public class SpotifyBestSongWeeklyPoll implements CommandLineRunner {
 	 */
 	@Autowired
 	private UserRepository userRepository;
+
+	/**
+	 * The {@link Contest} Table Query Repository
+	 */
+	@Autowired
+	private ContestRepository contestRepository;
 
 	/**
 	 * The SpotifyDeveloper Application clientID
@@ -248,7 +249,7 @@ public class SpotifyBestSongWeeklyPoll implements CommandLineRunner {
 							})
 							.then();
 
-					Mono<Void> reactionEvent = gatewayDiscordClient.on(ReactionAddEvent.class, event -> {
+					Mono<Void> reactionAddEvent = gatewayDiscordClient.on(ReactionAddEvent.class, event -> {
 
 								if(messID == null)
 									return Mono.empty();
@@ -269,6 +270,13 @@ public class SpotifyBestSongWeeklyPoll implements CommandLineRunner {
 								if(channel == null)
 									return Mono.empty();
 
+								Message contest_mess = channel.getMessageById(messID)
+										.block();
+
+								if(contest_mess == null)
+									return channel.createMessage("Internal error!");
+
+
 								Optional<Member> member = event.getMember();
 
 								if(member.isPresent()) {
@@ -288,11 +296,113 @@ public class SpotifyBestSongWeeklyPoll implements CommandLineRunner {
 										return channel.createMessage(member.get()
 												.getDisplayName() +
 												" - You already voted! Remove your vote before voting another song!");
+									} else {
+										discord4j.core.object.entity.Guild discord_guild = message.getGuild()
+												.block();
+
+										if(discord_guild == null)
+											return Mono.empty();
+
+										Guild guild = guildRepository.getGuildByGuildidAndDeleted(discord_guild.getId()
+												.asLong(), false);
+
+										if(guild == null) {
+											guild = new Guild(discord_guild.getId()
+													.asLong(), false);
+											guildRepository.save(guild);
+										}
+
+										List<Contest> contests = contestRepository.getContestsByGuildAndDeleted(guild, false);
+
+										if(contests.isEmpty())
+											return channel.createMessage("No contest started!");
+
+										contests = contests.stream()
+												.filter(contest -> contest.getEmote()
+														.equalsIgnoreCase(event.getEmoji()
+																.toString()))
+												.collect(Collectors.toList());
+
+										if(contests.size() > 1)
+											return channel.createMessage("Internal error, duplicated Reaction");
+
+										contests.get(0)
+												.setCount(contests.get(0)
+														.getCount() + 1);
+
+										contestRepository.save(contests.get(0));
+
+										return channel.createMessage(member.get()
+												.getDisplayName() + " - Vote added!");
+
 									}
 								}
 
 								return Mono.empty();
 
+							})
+							.then();
+
+					Mono<Void> reactionRemoveEvent = gatewayDiscordClient.on(ReactionRemoveEvent.class, event -> {
+
+								if(messID == null)
+									return Mono.empty();
+
+								Message message = event.getMessage()
+										.block();
+
+								if(message == null)
+									return Mono.empty();
+
+								if(!message.getId()
+										.equals(messID))
+									return Mono.empty();
+
+								MessageChannel channel = message.getChannel()
+										.block();
+
+								if(channel == null)
+									return Mono.empty();
+
+								Message contest_mess = channel.getMessageById(messID)
+										.block();
+
+								if(contest_mess == null)
+									return channel.createMessage("Internal error!");
+
+
+								discord4j.core.object.entity.Guild discord_guild = message.getGuild()
+										.block();
+
+								if(discord_guild == null)
+									return Mono.empty();
+
+								Guild guild = guildRepository.getGuildByGuildidAndDeleted(discord_guild.getId()
+										.asLong(), false);
+
+								if(guild == null) {
+									guild = new Guild(discord_guild.getId()
+											.asLong(), false);
+									guildRepository.save(guild);
+								}
+
+								List<Contest> contests = contestRepository.getContestsByGuildAndDeleted(guild, false);
+
+								if(contests.isEmpty())
+									return channel.createMessage("No contest started!");
+
+								contests.get(0)
+										.setCount(contests.get(0)
+												.getCount() - 1);
+
+								contestRepository.save(contests.get(0));
+
+								Member member = event.getUser()
+										.block()
+										.asMember(discord_guild.getId())
+										.block();
+
+								return channel.createMessage(member.getDisplayName() + " - Vote added!");
 							})
 							.then();
 
@@ -402,6 +512,8 @@ public class SpotifyBestSongWeeklyPoll implements CommandLineRunner {
 
 								String accesstoken = loginSpotify().getAccess_token();
 
+								List<Contest> contests = new LinkedList<>();
+
 								for(Items item : itemsFiltered) {
 
 									User user = userRepository.getUserBySpotifyidAndDeleted(item.getAdded_by()
@@ -427,6 +539,7 @@ public class SpotifyBestSongWeeklyPoll implements CommandLineRunner {
 											.getId(),
 											getUser(item.getAdded_by()
 													.getId(), accesstoken),
+											item.getTrack().getId(),
 											item.getTrack()
 													.getName(),
 											item.getTrack()
@@ -437,8 +550,12 @@ public class SpotifyBestSongWeeklyPoll implements CommandLineRunner {
 
 									songReaction.put(emojisss[atEmbed.get()], userTrack);
 
+									contests.add(new Contest(guild, userTrack.getSpotifySongID(), emojisss[atEmbed.get()], 0, LocalDateTime.now(), false));
+
 									atEmbed.getAndIncrement();
 								}
+
+								contestRepository.saveAll(contests);
 
 								discord4j.core.object.entity.Guild discord_guild = message.getGuild()
 										.block();
@@ -588,8 +705,8 @@ public class SpotifyBestSongWeeklyPoll implements CommandLineRunner {
 								List<EmbedCreateFields.Field> fields = new LinkedList<>();
 
 								topSorted.forEach((key, value) -> fields.add(EmbedCreateFields.Field.of(
-										key.getTrackname() + " - " + key.getTrackauthors(),
-										key.getSpotifyname() + " - Voti: " + (value - 1),
+										key.getTrackName() + " - " + key.getTrackAuthors(),
+										key.getSpotifyUserName() + " - Voti: " + (value - 1),
 										false)));
 
 								UserTrack userWinner = topSorted.entrySet()
@@ -597,7 +714,7 @@ public class SpotifyBestSongWeeklyPoll implements CommandLineRunner {
 										.next()
 										.getKey();
 
-								String winner_id = userWinner.getSpotifyid();
+								String winner_id = userWinner.getSpotifyUserID();
 
 								User user = userRepository.getUserBySpotifyidAndDeleted(winner_id, false);
 								if(user == null) {
@@ -945,8 +1062,8 @@ public class SpotifyBestSongWeeklyPoll implements CommandLineRunner {
 								songReaction.forEach((reaction, userTrack) -> {
 
 									fields.add(EmbedCreateFields.Field.of(
-											emojisss[atEmbed.getAndIncrement()] + " " + userTrack.getTrackname(),
-											userTrack.getTrackauthors(),
+											emojisss[atEmbed.getAndIncrement()] + " " + userTrack.getTrackName(),
+											userTrack.getTrackAuthors(),
 											true));
 
 									if(atEmbed.get() % 2 == 1)
@@ -1020,9 +1137,9 @@ public class SpotifyBestSongWeeklyPoll implements CommandLineRunner {
 							.and(tie_breaker)
 							.and(disconnectLennosc)
 							.and(kickLennosc)
-							.and(reactionEvent);
-				});
-		client.block();
+							.and(reactionAddEvent)
+							.and(reactionRemoveEvent);
+				}); client.block();
 
 	}
 
@@ -1042,7 +1159,7 @@ public class SpotifyBestSongWeeklyPoll implements CommandLineRunner {
 			String accessToken = loginSpotify().getAccess_token();
 
 			URL urlPlaylist = new URL("https://api.spotify.com/v1/playlists/" + playlist +
-					"/tracks?fields=items(added_by.id,track.name,track.album.artists,added_at)");
+					"/tracks?fields=items(added_by.id,track.id,track.name,track.album.artists,added_at)");
 			HttpURLConnection connPlaylist = (HttpURLConnection) urlPlaylist.openConnection();
 
 			connPlaylist.setRequestProperty("Authorization", "Bearer " + accessToken);
