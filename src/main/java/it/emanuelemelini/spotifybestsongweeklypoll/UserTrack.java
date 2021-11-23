@@ -7,12 +7,14 @@ import lombok.Data;
 @AllArgsConstructor
 public class UserTrack {
 
-	private String spotifyid;
+	private String spotifyUserID;
 
-	private String spotifyname;
+	private String spotifyUserName;
 
-	private String trackname;
+	private String spotifySongID;
 
-	private String trackauthors;
+	private String trackName;
+
+	private String trackAuthors;
 
 }
