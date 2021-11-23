@@ -19,6 +19,9 @@ public class Contest {
 	@Column(name = "song_id")
 	private String songid;
 
+	@Column(name = "emote")
+	private String emote;
+
 	@Column(name = "count")
 	private int count;
 
@@ -30,9 +33,10 @@ public class Contest {
 
 	protected Contest() {}
 
-	public Contest(Guild guild, String songid, int count, LocalDateTime date, boolean deleted) {
+	public Contest(Guild guild, String songid, String emote, int count, LocalDateTime date, boolean deleted) {
 		this.guild = guild;
 		this.songid = songid;
+		this.emote = emote;
 		this.count = count;
 		this.date = date;
 		this.deleted = deleted;
@@ -56,6 +60,14 @@ public class Contest {
 
 	public void setSongid(String songid) {
 		this.songid = songid;
+	}
+
+	public String getEmote() {
+		return emote;
+	}
+
+	public void setEmote(String emote) {
+		this.emote = emote;
 	}
 
 	public int getCount() {
