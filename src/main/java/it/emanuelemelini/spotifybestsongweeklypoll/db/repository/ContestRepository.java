@@ -5,13 +5,14 @@ import it.emanuelemelini.spotifybestsongweeklypoll.db.model.Guild;
 import org.springframework.data.repository.CrudRepository;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 public interface ContestRepository extends CrudRepository<Contest, Long> {
 
 	Contest getContestByIdcontest(long idcontest);
 
-	Contest getContestByGuildAndDeleted(Guild guild, boolean deleted);
+	List<Contest> getContestsByGuildAndDeleted(Guild guild, boolean deleted);
 
-	Contest getContestByGuildAndDateAndDeleted(Guild guild, LocalDateTime date, boolean deleted);
+	List<Contest> getContestsByGuildAndDateAndDeleted(Guild guild, LocalDateTime date, boolean deleted);
 
 }
