@@ -539,7 +539,8 @@ public class SpotifyBestSongWeeklyPoll implements CommandLineRunner {
 											.getId(),
 											getUser(item.getAdded_by()
 													.getId(), accesstoken),
-											item.getTrack().getId(),
+											item.getTrack()
+													.getId(),
 											item.getTrack()
 													.getName(),
 											item.getTrack()
@@ -550,7 +551,12 @@ public class SpotifyBestSongWeeklyPoll implements CommandLineRunner {
 
 									songReaction.put(emojisss[atEmbed.get()], userTrack);
 
-									contests.add(new Contest(guild, userTrack.getSpotifySongID(), emojisss[atEmbed.get()], 0, LocalDateTime.now(), false));
+									contests.add(new Contest(guild,
+											userTrack.getSpotifySongID(),
+											emojisss[atEmbed.get()],
+											0,
+											LocalDateTime.now(),
+											false));
 
 									atEmbed.getAndIncrement();
 								}
@@ -691,7 +697,6 @@ public class SpotifyBestSongWeeklyPoll implements CommandLineRunner {
 										songReaction.put(emojisss[atTie.getAndIncrement()], userTrack);
 									});
 									tieMessID = messID;
-									messID = null;
 									return channel.createMessage("Contest ended with a tie, start tiebreaker with !tie.");
 								}
 
@@ -1018,18 +1023,22 @@ public class SpotifyBestSongWeeklyPoll implements CommandLineRunner {
 
 								Message message = event.getMessage();
 
-								if(tieMessID != null)
-									return message.getChannel()
-											.flatMap(messageChannel -> messageChannel.createMessage(
-													"There is already a tiebreaker contest!"));
+								if(tieMessID == null) {
+									if(messID == null)
+										return message.getChannel()
+												.flatMap(messageChannel -> messageChannel.createMessage(
+														"There is no contest to tie!"));
+									else
+										return message.getChannel()
+												.flatMap(messageChannel -> messageChannel.createMessage(
+														"There is a contest ongoing!"));
+								} else {
+									if(messID == null)
+										return message.getChannel()
+												.flatMap(messageChannel -> messageChannel.createMessage(
+														"There is already a tiebreaker contest!"));
+								}
 
-								if(messID != null)
-									return message.getChannel()
-											.flatMap(messageChannel -> messageChannel.createMessage(
-													"There is a contest ongoing!"));
-
-								String[] command = message.getContent()
-										.split(" ");
 								MessageChannel channel = message.getChannel()
 										.block();
 
@@ -1119,6 +1128,7 @@ public class SpotifyBestSongWeeklyPoll implements CommandLineRunner {
 														.build()))
 										.flatMap(msg -> {
 											messID = msg.getId();
+											tieMessID = null;
 											return Mono.from(Flux.fromStream(songReaction.keySet()
 															.stream())
 													.flatMap(track -> msg.addReaction(ReactionEmoji.unicode(emojisss[atCount.getAndIncrement()]))));
@@ -1139,7 +1149,8 @@ public class SpotifyBestSongWeeklyPoll implements CommandLineRunner {
 							.and(kickLennosc)
 							.and(reactionAddEvent)
 							.and(reactionRemoveEvent);
-				}); client.block();
+				});
+		client.block();
 
 	}
 
