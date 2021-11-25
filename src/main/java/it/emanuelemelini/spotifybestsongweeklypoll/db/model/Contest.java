@@ -16,14 +16,18 @@ public class Contest {
 	@JoinColumn(name = "guild_id")
 	private Guild guild;
 
-	@Column(name = "song_id")
-	private String songid;
+	@ManyToOne
+	@JoinColumn(name = "song_id")
+	private Song song;
 
 	@Column(name = "emote")
 	private String emote;
 
 	@Column(name = "count")
 	private int count;
+
+	@Column(name = "mess_id")
+	private long mess;
 
 	@Column(name = "date")
 	private LocalDateTime date;
@@ -33,9 +37,9 @@ public class Contest {
 
 	protected Contest() {}
 
-	public Contest(Guild guild, String songid, String emote, int count, LocalDateTime date, boolean deleted) {
+	public Contest(Guild guild, Song song, String emote, int count, LocalDateTime date, boolean deleted) {
 		this.guild = guild;
-		this.songid = songid;
+		this.song = song;
 		this.emote = emote;
 		this.count = count;
 		this.date = date;
@@ -54,12 +58,12 @@ public class Contest {
 		this.guild = guild;
 	}
 
-	public String getSongid() {
-		return songid;
+	public Song getSong() {
+		return song;
 	}
 
-	public void setSongid(String songid) {
-		this.songid = songid;
+	public void setSong(Song song) {
+		this.song = song;
 	}
 
 	public String getEmote() {
@@ -84,6 +88,14 @@ public class Contest {
 
 	public void setDate(LocalDateTime date) {
 		this.date = date;
+	}
+
+	public long getMess() {
+		return mess;
+	}
+
+	public void setMess(long mess) {
+		this.mess = mess;
 	}
 
 	public boolean isDeleted() {

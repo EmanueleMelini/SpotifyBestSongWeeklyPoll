@@ -17,6 +17,9 @@ public class Guild {
 	@Column(name = "role_id")
 	private Long roleid;
 
+	@Column(name = "playlist_id")
+	private String playlistid;
+
 	@OneToMany(mappedBy = "guild")
 	private Set<Winner> winners;
 
@@ -65,6 +68,14 @@ public class Guild {
 
 	public void setRoleid(Long roleid) {
 		this.roleid = roleid;
+	}
+
+	public String getPlaylistid() {
+		return playlistid;
+	}
+
+	public void setPlaylistid(String playlistid) {
+		this.playlistid = playlistid;
 	}
 
 	public Set<Winner> getWinners() {

@@ -15,4 +15,6 @@ public interface ContestRepository extends CrudRepository<Contest, Long> {
 
 	List<Contest> getContestsByGuildAndDateAndDeleted(Guild guild, LocalDateTime date, boolean deleted);
 
+	List<Contest> getContestsByGuildAndDateAndMessAndDeleted(Guild guild, LocalDateTime date, long mess, boolean deleted);
+
 }
