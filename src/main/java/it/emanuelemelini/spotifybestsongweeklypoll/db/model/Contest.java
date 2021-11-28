@@ -29,7 +29,13 @@ public class Contest {
 	@Column(name = "mess_id")
 	private long mess;
 
-	@Column(name = "date")
+	@Column(name = "image")
+	private String image;
+
+	@Column(name = "url")
+	private String url;
+
+	@Column(name = "contest_date")
 	private LocalDateTime date;
 
 	@Column(name = "deleted")
@@ -37,12 +43,14 @@ public class Contest {
 
 	protected Contest() {}
 
-	public Contest(Guild guild, Song song, String emote, int count, LocalDateTime date, boolean deleted) {
+	public Contest(Guild guild, Song song, String emote, int count, LocalDateTime date, String image, String url, boolean deleted) {
 		this.guild = guild;
 		this.song = song;
 		this.emote = emote;
 		this.count = count;
 		this.date = date;
+		this.image = image;
+		this.url = url;
 		this.deleted = deleted;
 	}
 
@@ -88,6 +96,22 @@ public class Contest {
 
 	public void setDate(LocalDateTime date) {
 		this.date = date;
+	}
+
+	public String getImage() {
+		return image;
+	}
+
+	public void setImage(String image) {
+		this.image = image;
+	}
+
+	public String getUrl() {
+		return url;
+	}
+
+	public void setUrl(String url) {
+		this.url = url;
 	}
 
 	public long getMess() {

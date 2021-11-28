@@ -3,7 +3,7 @@ package it.emanuelemelini.spotifybestsongweeklypoll.db.model;
 import javax.persistence.*;
 
 @Entity
-@Table(name = "contests")
+@Table(name = "songs")
 public class Song {
 
 	@Id
@@ -39,6 +39,8 @@ public class Song {
 		this.guild = guild;
 		this.deleted = deleted;
 	}
+
+	protected Song() {}
 
 	public long getIdsong() {
 		return idsong;
