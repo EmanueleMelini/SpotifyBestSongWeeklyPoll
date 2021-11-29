@@ -15,6 +15,6 @@ public interface ContestDayRepository extends CrudRepository<ContestDay, Long> {
 
 	List<ContestDay> getContestDaysByDayAndDeleted(DayOfWeek day, boolean deleted);
 
-	ContestDay getContestDayByIdcontestday(long IDcontestday);
+	ContestDay getContestDayById(long id);
 
 }

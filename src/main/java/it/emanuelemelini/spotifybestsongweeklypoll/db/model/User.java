@@ -10,51 +10,37 @@ public class User {
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	@Column(name = "id_user")
-	private Long iduser;
-
-	@Column(name = "spotify_id")
-	private String spotifyid;
-
-	@Column(name = "discord_id")
-	private Long discordid;
+	private Long id;
 
 	@ManyToOne
 	@JoinColumn(name = "guild_id")
 	private Guild guild;
 
+	@Column(name = "spotify_id")
+	private String spotifyId;
+
+	@Column(name = "discord_id")
+	private Long discordId;
+
+	@Column(name = "deleted")
 	private boolean deleted;
 
 	@OneToMany(mappedBy = "user")
 	private Set<Winner> winners;
 
 	protected User() {
+
 	}
 
-	public User(String spotifyid, Long discordid, boolean deleted, Guild guild) {
-		this.spotifyid = spotifyid;
-		this.discordid = discordid;
-		this.deleted = deleted;
+	public User(Guild guild, String spotifyid, Long discordid, boolean deleted) {
 		this.guild = guild;
+		this.spotifyId = spotifyid;
+		this.discordId = discordid;
+		this.deleted = deleted;
 	}
 
-	public Long getIduser() {
-		return iduser;
-	}
-
-	public String getSpotifyid() {
-		return spotifyid;
-	}
-
-	public void setSpotifyid(String spotifyid) {
-		this.spotifyid = spotifyid;
-	}
-
-	public Long getDiscordid() {
-		return discordid;
-	}
-
-	public void setDiscordid(Long discordid) {
-		this.discordid = discordid;
+	public Long getId() {
+		return id;
 	}
 
 	public Guild getGuild() {
@@ -63,6 +49,22 @@ public class User {
 
 	public void setGuild(Guild guild) {
 		this.guild = guild;
+	}
+
+	public String getSpotifyId() {
+		return spotifyId;
+	}
+
+	public void setSpotifyId(String spotifyId) {
+		this.spotifyId = spotifyId;
+	}
+
+	public Long getDiscordId() {
+		return discordId;
+	}
+
+	public void setDiscordId(Long discordId) {
+		this.discordId = discordId;
 	}
 
 	public boolean isDeleted() {

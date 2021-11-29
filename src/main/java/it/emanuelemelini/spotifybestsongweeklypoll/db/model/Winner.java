@@ -9,7 +9,7 @@ public class Winner {
 
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
-	private long idwinner;
+	private long id;
 
 	@Column(name = "spotify_name")
 	private String name;
@@ -18,28 +18,38 @@ public class Winner {
 	@JoinColumn(name = "user_id")
 	private User user;
 
-	private boolean deleted;
-
-	@Column(name = "winner_date")
-	private LocalDateTime winnerdate;
-
 	@ManyToOne
 	@JoinColumn(name = "guild_id")
 	private Guild guild;
 
+	@Column(name = "deleted")
+	private boolean deleted;
+
+	@Column(name = "winner_date")
+	private LocalDateTime winnerDate;
+
 	protected Winner() {
+
 	}
 
-	public Winner(String name, User user, LocalDateTime winnerdate, Guild guild) {
+	public Winner(Guild guild, String name, User user, LocalDateTime winnerdate) {
+		this.guild = guild;
 		this.name = name;
 		this.user = user;
 		this.deleted = false;
-		this.winnerdate = winnerdate;
-		this.guild = guild;
+		this.winnerDate = winnerdate;
 	}
 
-	public long getIdwinner() {
-		return idwinner;
+	public long getId() {
+		return id;
+	}
+
+	public Guild getGuild() {
+		return guild;
+	}
+
+	public void setGuild(Guild guild) {
+		this.guild = guild;
 	}
 
 	public String getName() {
@@ -66,20 +76,12 @@ public class Winner {
 		this.deleted = deleted;
 	}
 
-	public LocalDateTime getWinnerdate() {
-		return winnerdate;
+	public LocalDateTime getWinnerDate() {
+		return winnerDate;
 	}
 
-	public void setWinnerdate(LocalDateTime winnerdate) {
-		this.winnerdate = winnerdate;
-	}
-
-	public Guild getGuild() {
-		return guild;
-	}
-
-	public void setGuild(Guild guild) {
-		this.guild = guild;
+	public void setWinnerDate(LocalDateTime winnerDate) {
+		this.winnerDate = winnerDate;
 	}
 
 }

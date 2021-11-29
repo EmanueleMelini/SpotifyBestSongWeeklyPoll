@@ -92,6 +92,18 @@ public class SpotifyBestSongWeeklyPoll implements CommandLineRunner {
 	private SongRepository songRepository;
 
 	/**
+	 * The {@link it.emanuelemelini.spotifybestsongweeklypoll.db.model.Playlist\} Table Query Repository
+	 */
+	@Autowired
+	private PlaylistRepository playlistRepository;
+
+	/**
+	 * The {@link ContestTrack} Table Query Repository
+	 */
+	@Autowired
+	private ContestTrackRepository contestTrackRepository;
+
+	/**
 	 * The SpotifyDeveloper Application clientID
 	 */
 	private final String clientID;
@@ -285,10 +297,17 @@ public class SpotifyBestSongWeeklyPoll implements CommandLineRunner {
 								if(guild == null) {
 									guild = new Guild(discord_guild.getId()
 											.asLong(), false);
+									guildRepository.save(guild);
 								}
 
-								guild.setPlaylistid(content[1]);
-								guildRepository.save(guild);
+								List<it.emanuelemelini.spotifybestsongweeklypoll.db.model.Playlist> playlists = playlistRepository.getPlaylistsByGuildAndDeleted(guild, false);
+
+								if(playlists.size() > 1)
+									return channel.createMessage("More than 1 active playlist found, delete the inactive ones!");
+
+								playlists.get(0).setSpotifyId(content[1]);
+
+								playlistRepository.save(playlists.get(0));
 
 								return channel.createMessage("Playlist inserted correctly");
 
@@ -412,41 +431,45 @@ public class SpotifyBestSongWeeklyPoll implements CommandLineRunner {
 															" - You already voted! Remove your vote before voting another song!")));
 								} else {
 
-									List<Contest> contests = contestRepository.getContestsByGuildAndDateAndMessAndDeleted(guild,
+									List<Contest> contests = contestRepository.getContestsByGuildAndDateAndDeleted(guild,
 											LocalDateTime.now()
 													.withHour(1)
 													.withMinute(0)
 													.withSecond(0),
-											mess_,
 											false);
 
 									if(contests.isEmpty())
 										return channel.createMessage("No contest started!");
 
-									contests = contests.stream()
-											.filter(contest -> contest.getEmote()
+									if(contests.size() > 1)
+										return channel.createMessage("More than one contest active, internal error!");
+
+									List<ContestTrack> contestTracks = contestTrackRepository.getContestTracksByContestAndGuildAndDeleted(contests.get(0), guild, false);
+
+									contestTracks = contestTracks.stream()
+											.filter(contestTrack -> contestTrack.getEmote()
 													.equalsIgnoreCase(event.getEmoji()
 															.asUnicodeEmoji()
 															.get()
 															.getRaw()))
 											.collect(Collectors.toList());
 
-									if(contests.size() > 1)
+									if(contestTracks.size() > 1)
 										return channel.createMessage("Internal error, duplicated Reaction");
 
-									contests.get(0)
-											.setCount(contests.get(0)
+									contestTracks.get(0)
+											.setCount(contestTracks.get(0)
 													.getCount() + 1);
 
-									contestRepository.save(contests.get(0));
+									contestTrackRepository.save(contestTracks.get(0));
 
-									contests = contestRepository.getContestsByGuildAndDeletedOrderByIdcontest(guild, false);
+									contestTracks = contestTrackRepository.getContestTracksByContestAndGuildAndDeleted(, guild, false);
 
 									List<EmbedCreateFields.Field> fields = createUpdatedEmbed(contests);
 
-									boolean role_ = guild.getRoleid() != null && guild.getRoleid() != 0;
+									boolean role_ = guild.getRoleId() != null && guild.getRoleId() != 0;
 
-									Role role = role_ ? discord_guild.getRoleById(Snowflake.of(guild.getRoleid()))
+									Role role = role_ ? discord_guild.getRoleById(Snowflake.of(guild.getRoleId()))
 											.block() : null;
 
 									if(role == null && role_)
@@ -571,7 +594,7 @@ public class SpotifyBestSongWeeklyPoll implements CommandLineRunner {
 
 								if(!event.getMessage()
 										.getContent()
-										.split(" ")[0].equalsIgnoreCase("!contestdb"))
+										.split(" ")[0].equalsIgnoreCase("!contest"))
 									return Mono.empty();
 
 								Message message = event.getMessage();
@@ -606,11 +629,11 @@ public class SpotifyBestSongWeeklyPoll implements CommandLineRunner {
 													"There is already a contest!"));
 
 
-								if(guild.getPlaylistid() == null)
+								if(guild.getPlaylistId() == null)
 									return message.getChannel()
 											.flatMap(messageChannel -> messageChannel.createMessage("Insert playlist ID first!"));
 
-								String playlist = guild.getPlaylistid();
+								String playlist = guild.getPlaylistId();
 
 								Playlist playlistMapped = getPlaylist(playlist);
 
@@ -645,7 +668,7 @@ public class SpotifyBestSongWeeklyPoll implements CommandLineRunner {
 								String last_winner;
 
 								if(lastWinner != null) {
-									if(!lastWinner.getWinnerdate()
+									if(!lastWinner.getWinnerDate()
 											.withHour(23)
 											.withMinute(59)
 											.withSecond(59)
@@ -655,7 +678,7 @@ public class SpotifyBestSongWeeklyPoll implements CommandLineRunner {
 													.withSecond(1)
 													.minusDays(7))) {
 										last_winner = lastWinner.getUser()
-												.getSpotifyid();
+												.getSpotifyId();
 									} else
 										last_winner = "";
 								} else
@@ -765,9 +788,9 @@ public class SpotifyBestSongWeeklyPoll implements CommandLineRunner {
 								if(discord_guild == null)
 									return Mono.empty();
 
-								boolean role_ = guild.getRoleid() != null && guild.getRoleid() != 0;
+								boolean role_ = guild.getRoleId() != null && guild.getRoleId() != 0;
 
-								Role role = role_ ? discord_guild.getRoleById(Snowflake.of(guild.getRoleid()))
+								Role role = role_ ? discord_guild.getRoleById(Snowflake.of(guild.getRoleId()))
 										.block() : null;
 
 								if(role == null && role_)
@@ -822,7 +845,7 @@ public class SpotifyBestSongWeeklyPoll implements CommandLineRunner {
 
 								if(!event.getMessage()
 										.getContent()
-										.split(" ")[0].equalsIgnoreCase("!contest"))
+										.split(" ")[0].equalsIgnoreCase("!contestlegacy"))
 									return Mono.empty();
 
 								Message message = event.getMessage();
@@ -892,7 +915,7 @@ public class SpotifyBestSongWeeklyPoll implements CommandLineRunner {
 								String last_winner;
 
 								if(lastWinner != null) {
-									if(!lastWinner.getWinnerdate()
+									if(!lastWinner.getWinnerDate()
 											.withHour(23)
 											.withMinute(59)
 											.withSecond(59)
@@ -902,7 +925,7 @@ public class SpotifyBestSongWeeklyPoll implements CommandLineRunner {
 													.withSecond(1)
 													.minusDays(7))) {
 										last_winner = lastWinner.getUser()
-												.getSpotifyid();
+												.getSpotifyId();
 									} else
 										last_winner = "";
 								} else
@@ -1005,9 +1028,9 @@ public class SpotifyBestSongWeeklyPoll implements CommandLineRunner {
 								if(discord_guild == null)
 									return Mono.empty();
 
-								boolean role_ = guild.getRoleid() != null && guild.getRoleid() != 0;
+								boolean role_ = guild.getRoleId() != null && guild.getRoleId() != 0;
 
-								Role role = role_ ? discord_guild.getRoleById(Snowflake.of(guild.getRoleid()))
+								Role role = role_ ? discord_guild.getRoleById(Snowflake.of(guild.getRoleId()))
 										.block() : null;
 
 								if(role == null && role_)
@@ -1051,7 +1074,7 @@ public class SpotifyBestSongWeeklyPoll implements CommandLineRunner {
 
 								if(!event.getMessage()
 										.getContent()
-										.split(" ")[0].equalsIgnoreCase("!close"))
+										.split(" ")[0].equalsIgnoreCase("!closelegacy"))
 									return Mono.empty();
 
 								Message message = event.getMessage();
@@ -1168,7 +1191,7 @@ public class SpotifyBestSongWeeklyPoll implements CommandLineRunner {
 								if(discord_guild == null)
 									return Mono.empty();
 
-								Member winner_d = discord_guild.getMemberById(Snowflake.of(user.getDiscordid()))
+								Member winner_d = discord_guild.getMemberById(Snowflake.of(user.getDiscordId()))
 										.block();
 
 								if(winner_d == null)
@@ -1185,9 +1208,9 @@ public class SpotifyBestSongWeeklyPoll implements CommandLineRunner {
 									guildRepository.save(guild);
 								}
 
-								boolean role_ = guild.getRoleid() != null && guild.getRoleid() != 0;
+								boolean role_ = guild.getRoleId() != null && guild.getRoleId() != 0;
 
-								Role role = role_ ? discord_guild.getRoleById(Snowflake.of(guild.getRoleid()))
+								Role role = role_ ? discord_guild.getRoleById(Snowflake.of(guild.getRoleId()))
 										.block() : null;
 
 								if(role == null && role_)
@@ -1411,7 +1434,7 @@ public class SpotifyBestSongWeeklyPoll implements CommandLineRunner {
 											.asLong(), false);
 								}
 
-								guild.setRoleid(roleid);
+								guild.setRoleId(roleid);
 								guildRepository.save(guild);
 
 								return channel.createMessage("Role inserted correctly");
@@ -1525,9 +1548,9 @@ public class SpotifyBestSongWeeklyPoll implements CommandLineRunner {
 								if(discord_guild == null)
 									return Mono.empty();
 
-								boolean role_ = guild.getRoleid() != null && guild.getRoleid() != 0;
+								boolean role_ = guild.getRoleId() != null && guild.getRoleId() != 0;
 
-								Role role = role_ ? discord_guild.getRoleById(Snowflake.of(guild.getRoleid()))
+								Role role = role_ ? discord_guild.getRoleById(Snowflake.of(guild.getRoleId()))
 										.block() : null;
 
 								if(role == null && role_)

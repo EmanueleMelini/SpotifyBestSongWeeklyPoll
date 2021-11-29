@@ -1,46 +1,45 @@
 package it.emanuelemelini.spotifybestsongweeklypoll.db.model;
 
 import javax.persistence.*;
+import java.util.Set;
 
 @Entity
-@Table(name = "songs")
-public class Song {
+@Table(name = "playlists")
+public class Playlist {
 
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
-	@Column(name = "id_song")
+	@Column(name = "id_playlist")
 	private long id;
-
-	@ManyToOne
-	@JoinColumn(name = "id_user")
-	private User user;
 
 	@ManyToOne
 	@JoinColumn(name = "id_guild")
 	private Guild guild;
 
-	@Column(name = "name_song")
-	private String name;
-
 	@Column(name = "spotify_id")
 	private String spotifyId;
 
-	@Column(name = "authors")
-	private String authors;
+	@Column(name = "image")
+	private String image;
+
+	@Column(name = "url")
+	private String url;
 
 	@Column(name = "deleted")
 	private boolean deleted;
 
-	protected Song() {
+	@OneToMany(mappedBy = "playlist")
+	private Set<Contest> contests;
+
+	protected Playlist() {
 
 	}
 
-	public Song(Guild guild, String name, String spotifyId, String authors, User user, boolean deleted) {
+	public Playlist(Guild guild, String spotifyId, String image, String url, boolean deleted) {
 		this.guild = guild;
-		this.name = name;
 		this.spotifyId = spotifyId;
-		this.authors = authors;
-		this.user = user;
+		this.image = image;
+		this.url = url;
 		this.deleted = deleted;
 	}
 
@@ -56,14 +55,6 @@ public class Song {
 		this.guild = guild;
 	}
 
-	public String getName() {
-		return name;
-	}
-
-	public void setName(String name) {
-		this.name = name;
-	}
-
 	public String getSpotifyId() {
 		return spotifyId;
 	}
@@ -72,20 +63,20 @@ public class Song {
 		this.spotifyId = spotifyId;
 	}
 
-	public String getAuthors() {
-		return authors;
+	public String getImage() {
+		return image;
 	}
 
-	public void setAuthors(String authors) {
-		this.authors = authors;
+	public void setImage(String image) {
+		this.image = image;
 	}
 
-	public User getUser() {
-		return user;
+	public String getUrl() {
+		return url;
 	}
 
-	public void setUser(User user) {
-		this.user = user;
+	public void setUrl(String url) {
+		this.url = url;
 	}
 
 	public boolean isDeleted() {
@@ -94,6 +85,10 @@ public class Song {
 
 	public void setDeleted(boolean deleted) {
 		this.deleted = deleted;
+	}
+
+	public Set<Contest> getContests() {
+		return contests;
 	}
 
 }

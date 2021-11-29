@@ -10,18 +10,20 @@ public class ContestDay {
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	@Column(name = "idcontest_day")
-	private long idcontestday;
+	private long id;
 
 	@ManyToOne
-	@JoinColumn(name = "guild_id")
+	@JoinColumn(name = "id_guild")
 	private Guild guild;
 
 	@Enumerated(EnumType.STRING)
 	private DayOfWeek day;
 
+	@Column(name = "deleted")
 	private boolean deleted;
 
 	protected ContestDay() {
+
 	}
 
 	public ContestDay(Guild guild, DayOfWeek day, boolean deleted) {
@@ -30,8 +32,8 @@ public class ContestDay {
 		this.deleted = deleted;
 	}
 
-	public long getIdcontestday() {
-		return idcontestday;
+	public long getId() {
+		return id;
 	}
 
 	public Guild getGuild() {
@@ -57,17 +59,5 @@ public class ContestDay {
 	public void setDeleted(boolean deleted) {
 		this.deleted = deleted;
 	}
-
-	/*
-	public enum Day {
-		MONDAY,
-		TUESDAY,
-		WEDNESDAY,
-		THURSDAY,
-		FRIDAY,
-		SATURDAY,
-		SUNDAY;
-	}
-	 */
 
 }

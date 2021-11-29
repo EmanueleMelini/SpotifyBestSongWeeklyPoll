@@ -9,16 +9,17 @@ public class Guild {
 
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
-	private Long idguild;
+	@Column(name = "id_guild")
+	private Long id;
 
 	@Column(name = "guild_id")
-	private Long guildid;
+	private Long guildId;
 
 	@Column(name = "role_id")
-	private Long roleid;
+	private Long roleId;
 
-	@Column(name = "playlist_id")
-	private String playlistid;
+	@Column(name = "deleted")
+	private boolean deleted;
 
 	@OneToMany(mappedBy = "guild")
 	private Set<Winner> winners;
@@ -32,26 +33,31 @@ public class Guild {
 	@OneToMany(mappedBy = "guild")
 	private Set<Contest> contests;
 
-	private boolean deleted;
+	@OneToMany(mappedBy = "guild")
+	private Set<ContestTrack> contestTracks;
+
+	@OneToMany(mappedBy = "guild")
+	private Set<Playlist> playlists;
 
 	protected Guild() {
+
 	}
 
 	public Guild(Long guildid, boolean deleted) {
-		this.guildid = guildid;
+		this.guildId = guildid;
 		this.deleted = deleted;
 	}
 
-	public Long getIdguild() {
-		return idguild;
+	public Long getId() {
+		return id;
 	}
 
-	public Long getGuildid() {
-		return guildid;
+	public Long getGuildId() {
+		return guildId;
 	}
 
-	public void setGuildid(Long guildid) {
-		this.guildid = guildid;
+	public void setGuildId(Long guildId) {
+		this.guildId = guildId;
 	}
 
 	public boolean isDeleted() {
@@ -62,20 +68,12 @@ public class Guild {
 		this.deleted = deleted;
 	}
 
-	public Long getRoleid() {
-		return roleid;
+	public Long getRoleId() {
+		return roleId;
 	}
 
-	public void setRoleid(Long roleid) {
-		this.roleid = roleid;
-	}
-
-	public String getPlaylistid() {
-		return playlistid;
-	}
-
-	public void setPlaylistid(String playlistid) {
-		this.playlistid = playlistid;
+	public void setRoleId(Long roleId) {
+		this.roleId = roleId;
 	}
 
 	public Set<Winner> getWinners() {
@@ -92,6 +90,14 @@ public class Guild {
 
 	public Set<Contest> getContests() {
 		return contests;
+	}
+
+	public Set<ContestTrack> getContestTracks() {
+		return contestTracks;
+	}
+
+	public Set<Playlist> getPlaylists() {
+		return playlists;
 	}
 
 }
