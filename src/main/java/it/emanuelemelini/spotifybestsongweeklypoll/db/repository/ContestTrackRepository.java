@@ -16,7 +16,7 @@ public interface ContestTrackRepository extends CrudRepository<ContestTrack, Lon
 
 	List<ContestTrack> getContestTracksByGuildAndDeleted(Guild guild, boolean deleted);
 
-	List<ContestTrack> getContestTrackByGuildAndEmoteAndDeleted(Guild guild, String emote, boolean deleted);
+	List<ContestTrack> getContestTrackByContestAndGuildAndEmoteAndDeleted(Contest contest, Guild guild, String emote, boolean deleted);
 
 	ContestTrack getContestTrackByIdAndDeleted(long id, boolean deleted);
 
