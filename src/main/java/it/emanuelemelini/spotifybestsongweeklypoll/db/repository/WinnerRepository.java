@@ -18,10 +18,10 @@ public interface WinnerRepository extends CrudRepository<Winner, Long> {
 
 	List<Winner> getWinnersByGuildAndDeleted(Guild guild, boolean deleted);
 
-	List<Winner> getWinnersByGuildAndDeletedAndWinnerdate(Guild guild, boolean deleted, LocalDateTime winnerdate);
+	List<Winner> getWinnersByGuildAndDeletedAndWinnerDate(Guild guild, boolean deleted, LocalDateTime winnerDate);
 
-	Winner findTopByGuildAndDeletedOrderByWinnerdateDesc(Guild guild, boolean deleted);
+	Winner findTopByGuildAndDeletedOrderByWinnerDateDesc(Guild guild, boolean deleted);
 
-	Winner getWinnersByIdwinner(long IDwinner);
+	Winner getWinnersById(long id);
 
 }

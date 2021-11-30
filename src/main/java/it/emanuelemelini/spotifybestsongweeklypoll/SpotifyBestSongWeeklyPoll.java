@@ -335,6 +335,9 @@ public class SpotifyBestSongWeeklyPoll implements CommandLineRunner {
 								if(discord_guild == null)
 									return Mono.empty();
 
+								if(messID != null)
+									return Mono.empty();
+
 								Guild guild = guildRepository.getGuildByGuildIdAndDeleted(discord_guild.getId()
 										.asLong(), false);
 
@@ -556,6 +559,8 @@ public class SpotifyBestSongWeeklyPoll implements CommandLineRunner {
 									return message.getChannel()
 											.flatMap(messageChannel -> messageChannel.createMessage("5"));
 
+								if(messID != null)									return Mono.empty();
+
 								Guild guild = guildRepository.getGuildByGuildIdAndDeleted(discord_guild.getId()
 										.asLong(), false);
 
@@ -702,7 +707,7 @@ public class SpotifyBestSongWeeklyPoll implements CommandLineRunner {
 									return message.getChannel()
 											.flatMap(messageChannel -> messageChannel.createMessage("Insert Contest Day!"));
 
-								Winner lastWinner = winnerRepository.findTopByGuildAndDeletedOrderByWinnerdateDesc(guild,
+								Winner lastWinner = winnerRepository.findTopByGuildAndDeletedOrderByWinnerDateDesc(guild,
 										false);
 								String last_winner;
 
@@ -937,7 +942,7 @@ public class SpotifyBestSongWeeklyPoll implements CommandLineRunner {
 									return message.getChannel()
 											.flatMap(messageChannel -> messageChannel.createMessage("Insert Contest Day!"));
 
-								Winner lastWinner = winnerRepository.findTopByGuildAndDeletedOrderByWinnerdateDesc(guild,
+								Winner lastWinner = winnerRepository.findTopByGuildAndDeletedOrderByWinnerDateDesc(guild,
 										false);
 								String last_winner;
 
@@ -1733,8 +1738,10 @@ public class SpotifyBestSongWeeklyPoll implements CommandLineRunner {
 
 			String accessToken = loginSpotify().getAccess_token();
 
+			// TODO: Cambiare da offset a loop di chiamate con next (https://developer.spotify.com/documentation/web-api/reference/#/operations/get-playlist)
+
 			URL urlPlaylist = new URL("https://api.spotify.com/v1/playlists/" + playlist +
-					"/tracks?fields=items(added_by.id,track.id,track.name,track.album.artists,added_at)");
+					"/tracks?fields=items(added_by.id,track.id,track.name,track.album.artists,added_at)&offset=50");
 			HttpURLConnection connPlaylist = (HttpURLConnection) urlPlaylist.openConnection();
 
 			connPlaylist.setRequestProperty("Authorization", "Bearer " + accessToken);
@@ -1967,7 +1974,7 @@ public class SpotifyBestSongWeeklyPoll implements CommandLineRunner {
 		System.out.println("Days: " + days);
 		System.out.println("Result: " + ora.minusDays(days)
 				.isBefore(date));
-		 */
+		*/
 
 		/*
 		switch(ora.getDayOfWeek()) {

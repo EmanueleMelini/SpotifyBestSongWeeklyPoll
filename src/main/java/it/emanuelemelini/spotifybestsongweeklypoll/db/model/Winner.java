@@ -9,6 +9,7 @@ public class Winner {
 
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
+	@Column(name = "id_winner")
 	private long id;
 
 	@Column(name = "spotify_name")
