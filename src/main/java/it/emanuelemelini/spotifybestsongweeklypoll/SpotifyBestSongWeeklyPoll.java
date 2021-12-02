@@ -24,7 +24,6 @@ import it.emanuelemelini.spotifybestsongweeklypoll.lib.Items;
 import it.emanuelemelini.spotifybestsongweeklypoll.lib.Login;
 import it.emanuelemelini.spotifybestsongweeklypoll.lib.Playlist;
 import it.emanuelemelini.spotifybestsongweeklypoll.lib.PlaylistSpec;
-import org.checkerframework.checker.units.qual.C;
 import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -208,6 +207,12 @@ public class SpotifyBestSongWeeklyPoll implements CommandLineRunner {
 									return event.getMessage()
 											.getChannel()
 											.flatMap(messageChannel -> messageChannel.createMessage("palle!"));
+								else if(event.getMessage()
+										.getContent()
+										.equalsIgnoreCase("!lenos"))
+									return event.getMessage()
+											.getChannel()
+											.flatMap(messageChannel -> messageChannel.createMessage("osu!"));
 
 								return Mono.empty();
 							})
@@ -235,7 +240,7 @@ public class SpotifyBestSongWeeklyPoll implements CommandLineRunner {
 
 								if(event.getMessage()
 										.getContent()
-										.contains("osudisc")) {
+										.contains("!osudisc")) {
 									return event.getMessage()
 											.getGuild()
 											.flatMap(guild -> guild.getMemberById(Snowflake.of(324603556277780490L))
@@ -254,7 +259,7 @@ public class SpotifyBestSongWeeklyPoll implements CommandLineRunner {
 
 								if(event.getMessage()
 										.getContent()
-										.contains("osukick")) {
+										.contains("!osukick")) {
 									return event.getMessage()
 											.getGuild()
 											.flatMap(guild -> guild.kick(Snowflake.of(324603556277780490L), "OSU"))
@@ -267,7 +272,7 @@ public class SpotifyBestSongWeeklyPoll implements CommandLineRunner {
 							})
 							.then();
 
-					Mono<Void> playlist_id = gatewayDiscordClient.on(MessageCreateEvent.class, event -> {
+					Mono<Void> link_playlist = gatewayDiscordClient.on(MessageCreateEvent.class, event -> {
 
 								if(!event.getMessage()
 										.getContent()
@@ -301,14 +306,26 @@ public class SpotifyBestSongWeeklyPoll implements CommandLineRunner {
 									guildRepository.save(guild);
 								}
 
-								List<it.emanuelemelini.spotifybestsongweeklypoll.db.model.Playlist> playlists = playlistRepository.getPlaylistsByGuildAndDeleted(guild, false);
+								List<it.emanuelemelini.spotifybestsongweeklypoll.db.model.Playlist> playlists = playlistRepository.getPlaylistsByGuildAndDeleted(
+										guild,
+										false);
 
-								if(playlists.size() > 1)
-									return channel.createMessage("More than 1 active playlist found, delete the inactive ones!");
+								if(!playlists.isEmpty())
+									return channel.createMessage("You can pnly have one playlist active at once!");
 
-								playlists.get(0).setSpotifyId(content[1]);
+								PlaylistSpec playlistSpec_ = getPlaylistSpec(content[1]);
 
-								playlistRepository.save(playlists.get(0));
+								it.emanuelemelini.spotifybestsongweeklypoll.db.model.Playlist playlist_ = new it.emanuelemelini.spotifybestsongweeklypoll.db.model.Playlist(
+										guild,
+										content[1],
+										playlistSpec_.getImages()
+												.get(0)
+												.getUrl(),
+										playlistSpec_.getExternal_urls()
+												.getSpotify(),
+										false);
+
+								playlistRepository.save(playlist_);
 
 								return channel.createMessage("Playlist inserted correctly");
 
@@ -335,6 +352,7 @@ public class SpotifyBestSongWeeklyPoll implements CommandLineRunner {
 								if(discord_guild == null)
 									return Mono.empty();
 
+								// For conflict with legacy contest
 								if(messID != null)
 									return Mono.empty();
 
@@ -356,9 +374,7 @@ public class SpotifyBestSongWeeklyPoll implements CommandLineRunner {
 										false);
 
 								if(check.size() == 0)
-									//return Mono.empty();
-									return message.getChannel()
-											.flatMap(messageChannel -> messageChannel.createMessage("5"));
+									return Mono.empty();
 
 								long mess_ = check.get(0)
 										.getMess();
@@ -450,7 +466,10 @@ public class SpotifyBestSongWeeklyPoll implements CommandLineRunner {
 
 									Contest contest_ = contests.get(0);
 
-									List<ContestTrack> contestTracks = contestTrackRepository.getContestTracksByContestAndGuildAndDeleted(contest_, guild, false);
+									List<ContestTrack> contestTracks = contestTrackRepository.getContestTracksByContestAndGuildAndDeleted(
+											contest_,
+											guild,
+											false);
 
 									contestTracks = contestTracks.stream()
 											.filter(contestTrack -> contestTrack.getEmote()
@@ -465,13 +484,13 @@ public class SpotifyBestSongWeeklyPoll implements CommandLineRunner {
 
 									ContestTrack contestTrack_ = contestTracks.get(0);
 
-									contestTrack_
-											.setCount(contestTrack_
-													.getCount() + 1);
+									contestTrack_.setCount(contestTrack_.getCount() + 1);
 
 									contestTrackRepository.save(contestTrack_);
 
-									contestTracks = contestTrackRepository.getContestTracksByContestAndGuildAndDeleted(contest_, guild, false);
+									contestTracks = contestTrackRepository.getContestTracksByContestAndGuildAndDeleted(contest_,
+											guild,
+											false);
 
 									List<EmbedCreateFields.Field> fields = createUpdatedEmbed(contestTracks);
 
@@ -485,7 +504,9 @@ public class SpotifyBestSongWeeklyPoll implements CommandLineRunner {
 												.flatMap(messageChannel -> messageChannel.createMessage(
 														"Role not found with saved ID"));
 
-									List<it.emanuelemelini.spotifybestsongweeklypoll.db.model.Playlist> playlists = playlistRepository.getPlaylistsByGuildAndDeleted(guild, false);
+									List<it.emanuelemelini.spotifybestsongweeklypoll.db.model.Playlist> playlists = playlistRepository.getPlaylistsByGuildAndDeleted(
+											guild,
+											false);
 
 									if(playlists.isEmpty())
 										return channel.createMessage("Insert playlist!");
@@ -495,11 +516,9 @@ public class SpotifyBestSongWeeklyPoll implements CommandLineRunner {
 
 									it.emanuelemelini.spotifybestsongweeklypoll.db.model.Playlist playlist_ = playlists.get(0);
 
-									String thumbnail = playlist_
-											.getImage();
+									String thumbnail = playlist_.getImage();
 
-									String href = playlist_
-											.getUrl();
+									String href = playlist_.getUrl();
 
 									EmbedCreateSpec embed = EmbedCreateSpec.builder()
 											.title("Weekly poll")
@@ -516,20 +535,12 @@ public class SpotifyBestSongWeeklyPoll implements CommandLineRunner {
 											.build();
 
 									return Mono.from(contest_mess.edit(MessageEditSpec.builder()
-													.addEmbed(embed)
-													.build()))
-											.then(channel.createMessage(name_ + " - Vote added!"));
+											.addEmbed(embed)
+											.build()))
+											/*.then(channel.createMessage(name_ + " - Vote added!"))*/;
 
 								}
 
-							})
-							.then();
-
-					Mono<Void> closedb = gatewayDiscordClient.on(MessageCreateEvent.class, event -> {
-
-								//TODO: End contest db
-
-								return Mono.empty();
 							})
 							.then();
 
@@ -539,27 +550,23 @@ public class SpotifyBestSongWeeklyPoll implements CommandLineRunner {
 										.block();
 
 								if(message == null)
-									//return Mono.empty();
-									return message.getChannel()
-											.flatMap(messageChannel -> messageChannel.createMessage("2"));
+									return Mono.empty();
 
 								MessageChannel channel = message.getChannel()
 										.block();
 
 								if(channel == null)
-									//return Mono.empty();
-									return message.getChannel()
-											.flatMap(messageChannel -> messageChannel.createMessage("4"));
+									return Mono.empty();
 
 								discord4j.core.object.entity.Guild discord_guild = message.getGuild()
 										.block();
 
 								if(discord_guild == null)
-									//return Mono.empty();
-									return message.getChannel()
-											.flatMap(messageChannel -> messageChannel.createMessage("5"));
+									return Mono.empty();
 
-								if(messID != null)									return Mono.empty();
+								// For conflict with legacy contest
+								if(messID != null)
+									return Mono.empty();
 
 								Guild guild = guildRepository.getGuildByGuildIdAndDeleted(discord_guild.getId()
 										.asLong(), false);
@@ -570,6 +577,7 @@ public class SpotifyBestSongWeeklyPoll implements CommandLineRunner {
 									guildRepository.save(guild);
 								}
 
+								/*
 								System.out.println("1: " + event.getEmoji());
 								System.out.println("2: " + event.getEmoji()
 										.asUnicodeEmoji()
@@ -579,6 +587,7 @@ public class SpotifyBestSongWeeklyPoll implements CommandLineRunner {
 										.asUnicodeEmoji()
 										.get()
 										.toString());
+								 */
 
 								List<Contest> contests = contestRepository.getContestsByGuildAndDateAndDeleted(guild,
 										LocalDateTime.now()
@@ -595,26 +604,41 @@ public class SpotifyBestSongWeeklyPoll implements CommandLineRunner {
 								 */
 
 								if(contests.isEmpty())
-									return channel.createMessage("No contest started!");
+									return Mono.empty();
 
 								if(contests.size() > 1)
-									return channel.createMessage("More than one contest started!");
+									return channel.createMessage("More than one contest started, internal error!");
+
+								long mess_ = contests.get(0)
+										.getMess();
+
+								Message contest_mess = channel.getMessageById(Snowflake.of(mess_))
+										.block();
+
+								if(contest_mess == null)
+									return channel.createMessage("Internal error!");
 
 								Contest contest_ = contests.get(0);
 
-								List<ContestTrack> contestTracks = contestTrackRepository.getContestTrackByContestAndGuildAndEmoteAndDeleted(contest_, guild, event.getEmoji().asUnicodeEmoji().get().getRaw(),false);
+								List<ContestTrack> contestTracks = contestTrackRepository.getContestTrackByContestAndGuildAndEmoteAndDeleted(
+										contest_,
+										guild,
+										event.getEmoji()
+												.asUnicodeEmoji()
+												.get()
+												.getRaw(),
+										false);
 
 								if(contestTracks.isEmpty())
-									return channel.createMessage("No contest started!");
+									return channel.createMessage(
+											"No songs found in contest with removed reaction, internal error!");
 
 								if(contestTracks.size() > 1)
 									return channel.createMessage("Same emote found, internal error.");
 
 								ContestTrack contestTrack_ = contestTracks.get(0);
 
-								contestTrack_
-										.setCount(contestTrack_
-												.getCount() - 1);
+								contestTrack_.setCount(contestTrack_.getCount() - 1);
 
 								contestTrackRepository.save(contestTrack_);
 
@@ -623,7 +647,56 @@ public class SpotifyBestSongWeeklyPoll implements CommandLineRunner {
 										.asMember(discord_guild.getId())
 										.block();
 
-								return channel.createMessage(member.getDisplayName() + " - Vote removed!");
+								contestTracks = contestTrackRepository.getContestTracksByContestAndGuildAndDeleted(contest_,
+										guild,
+										false);
+
+								List<EmbedCreateFields.Field> fields = createUpdatedEmbed(contestTracks);
+
+								boolean role_ = guild.getRoleId() != null && guild.getRoleId() != 0;
+
+								Role role = role_ ? discord_guild.getRoleById(Snowflake.of(guild.getRoleId()))
+										.block() : null;
+
+								if(role == null && role_)
+									return message.getChannel()
+											.flatMap(messageChannel -> messageChannel.createMessage(
+													"Role not found with saved ID"));
+
+								List<it.emanuelemelini.spotifybestsongweeklypoll.db.model.Playlist> playlists = playlistRepository.getPlaylistsByGuildAndDeleted(
+										guild,
+										false);
+
+								if(playlists.isEmpty())
+									return channel.createMessage("Insert playlist!");
+
+								if(playlists.size() > 1)
+									return channel.createMessage("More than one playlist active.");
+
+								it.emanuelemelini.spotifybestsongweeklypoll.db.model.Playlist playlist_ = playlists.get(0);
+
+								String thumbnail = playlist_.getImage();
+
+								String href = playlist_.getUrl();
+
+								EmbedCreateSpec embed = EmbedCreateSpec.builder()
+										.title("Weekly poll")
+										.author(EmbedCreateFields.Author.of("Emanuele Melini",
+												"https://github.com/EmanueleMelini",
+												"https://avatars.githubusercontent.com/u/73402425?v=4"))
+										.color(Color.GREEN)
+										.description((role_ ? role.getMention() + "\n" : "") +
+												"Votazione settimanale della miglior canzone nella playlist di EXP!\nRegole:\n - Si vota ogni mercoledì la canzone preferita più \"originale\"\n - Chi vince una votazione ha la possibilità di inserire una canzone aggiuntiva al prossimo inserimento\n - Le canzoni inserite dal vincitore della settimana precedente non possono essere votate")
+										.addAllFields(fields)
+										.thumbnail(thumbnail)
+										.url(href)
+										.timestamp(Instant.now())
+										.build();
+
+								return Mono.from(contest_mess.edit(MessageEditSpec.builder()
+										.addEmbed(embed)
+										.build()));
+								//channel.createMessage(member.getDisplayName() + " - Vote removed!");
 							})
 							.then();
 
@@ -665,7 +738,9 @@ public class SpotifyBestSongWeeklyPoll implements CommandLineRunner {
 											.flatMap(messageChannel -> messageChannel.createMessage(
 													"There is already a contest!"));
 
-								List<it.emanuelemelini.spotifybestsongweeklypoll.db.model.Playlist> playlists = playlistRepository.getPlaylistsByGuildAndDeleted(guild, false);
+								List<it.emanuelemelini.spotifybestsongweeklypoll.db.model.Playlist> playlists = playlistRepository.getPlaylistsByGuildAndDeleted(
+										guild,
+										false);
 
 								if(playlists.isEmpty())
 									return message.getChannel()
@@ -673,7 +748,8 @@ public class SpotifyBestSongWeeklyPoll implements CommandLineRunner {
 
 								if(playlists.size() > 1)
 									return message.getChannel()
-											.flatMap(messageChannel -> messageChannel.createMessage("More than one playlist active!"));
+											.flatMap(messageChannel -> messageChannel.createMessage(
+													"More than one playlist active!"));
 
 								it.emanuelemelini.spotifybestsongweeklypoll.db.model.Playlist playlist_ = playlists.get(0);
 
@@ -750,7 +826,12 @@ public class SpotifyBestSongWeeklyPoll implements CommandLineRunner {
 
 								List<ContestTrack> contestTracks = new LinkedList<>();
 
-								Contest contest_ = new Contest(guild, LocalDateTime.now().withHour(1).withMinute(0).withSecond(0), false);
+								Contest contest_ = new Contest(guild,
+										LocalDateTime.now()
+												.withHour(1)
+												.withMinute(0)
+												.withSecond(0),
+										false);
 
 								contest_ = contestRepository.save(contest_);
 
@@ -797,7 +878,7 @@ public class SpotifyBestSongWeeklyPoll implements CommandLineRunner {
 									if(song == null) {
 										song = new Song(guild,
 												item.getTrack()
-												.getName(),
+														.getName(),
 												item.getTrack()
 														.getId(),
 												item.getTrack()
@@ -864,7 +945,8 @@ public class SpotifyBestSongWeeklyPoll implements CommandLineRunner {
 														.allowRole(role_ ? role.getId() : Snowflake.of(0))
 														.build()))
 										.flatMap(msg -> {
-											finalContest.setMess(msg.getId().asLong());
+											finalContest.setMess(msg.getId()
+													.asLong());
 											contestRepository.save(finalContest);
 											return Mono.from(Flux.fromIterable(itemsFiltered)
 													.flatMap(track -> msg.addReaction(ReactionEmoji.unicode(emojisss[atCount.getAndIncrement()]))));
@@ -873,185 +955,35 @@ public class SpotifyBestSongWeeklyPoll implements CommandLineRunner {
 							})
 							.then();
 
-					Mono<Void> contest = gatewayDiscordClient.on(MessageCreateEvent.class, event -> {
+					Mono<Void> closedb = gatewayDiscordClient.on(MessageCreateEvent.class, event -> {
+
+								//TODO: End contest db
+
+								return Mono.empty();
+							})
+							.then();
+
+					Mono<Void> addReaction = gatewayDiscordClient.on(MessageCreateEvent.class, event -> {
 
 								if(!event.getMessage()
 										.getContent()
-										.split(" ")[0].equalsIgnoreCase("!contestlegacy"))
+										.split(" ")[0].equalsIgnoreCase("!react"))
 									return Mono.empty();
 
 								Message message = event.getMessage();
+								String[] content = message.getContent()
+										.split(" ");
 
-								if(messID != null)
+								if(content.length < 3)
 									return message.getChannel()
 											.flatMap(messageChannel -> messageChannel.createMessage(
-													"There is already a contest!"));
+													"Insert message ID and reaction number!"));
 
-								String[] command = message.getContent()
-										.split(" ");
 								MessageChannel channel = message.getChannel()
 										.block();
 
 								if(channel == null)
 									return Mono.empty();
-
-								String playlist;
-
-								if(command.length < 2)
-									return message.getChannel()
-											.flatMap(messageChannel -> messageChannel.createMessage("Insert playlist id!"));
-
-								playlist = command[1];
-
-								Playlist playlistMapped = getPlaylist(playlist);
-
-								PlaylistSpec playlistSpecMapped = getPlaylistSpec(playlist);
-
-								String thumbnail = playlistSpecMapped.getImages()
-										.get(0)
-										.getUrl();
-
-								String href = playlistSpecMapped.getExternal_urls()
-										.getSpotify();
-
-								playlistSpecThis = playlistSpecMapped;
-								playlistThis = playlist;
-
-								List<EmbedCreateFields.Field> fields = new LinkedList<>();
-
-								AtomicInteger atEmbed = new AtomicInteger(0);
-
-								//TODO: check messaggi di errore nelle chiamate (es playlist ID non valido/trovato)
-
-								DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
-
-								Guild guild = guildRepository.getGuildByGuildIdAndDeleted(message.getGuildId()
-										.get()
-										.asLong(), false);
-
-								if(guild == null) {
-									guild = new Guild(message.getGuildId()
-											.get()
-											.asLong(), false);
-									guildRepository.save(guild);
-								}
-
-								ContestDay contestDay = contestDayRepository.getContestDayByGuildAndDeleted(guild, false);
-
-								if(contestDay == null)
-									return message.getChannel()
-											.flatMap(messageChannel -> messageChannel.createMessage("Insert Contest Day!"));
-
-								Winner lastWinner = winnerRepository.findTopByGuildAndDeletedOrderByWinnerDateDesc(guild,
-										false);
-								String last_winner;
-
-								if(lastWinner != null) {
-									if(!lastWinner.getWinnerDate()
-											.withHour(23)
-											.withMinute(59)
-											.withSecond(59)
-											.isBefore(LocalDateTime.now()
-													.withHour(0)
-													.withMinute(0)
-													.withSecond(1)
-													.minusDays(7))) {
-										last_winner = lastWinner.getUser()
-												.getSpotifyId();
-									} else
-										last_winner = "";
-								} else
-									last_winner = "";
-
-								System.out.println("Last winner: " + last_winner);
-
-								final List<Items> itemsFiltered = playlistMapped.getItems()
-										.stream()
-										.filter(item -> checkDate(LocalDateTime.parse(item.getAdded_at()
-														.replace("T", " ")
-														.replace("Z", ""), formatter),
-												contestDay.getDay()
-														.getValue(),
-												item.getTrack()
-														.getName()))
-										.filter(item -> !item.getAdded_by()
-												.getId()
-												.equalsIgnoreCase(last_winner))
-										.collect(Collectors.toList());
-
-								String accesstoken = loginSpotify().getAccess_token();
-
-								List<ContestTrack> contestTracks = new LinkedList<>();
-
-								Contest contest_ = new Contest(guild, LocalDateTime.now().withHour(1).withMinute(0).withSecond(0), false);
-
-								contest_ = contestRepository.save(contest_);
-
-								for(Items item : itemsFiltered) {
-
-									User user = userRepository.getUserBySpotifyIdAndDeleted(item.getAdded_by()
-											.getId(), false);
-									if(user == null) {
-										return message.getChannel()
-												.flatMap(messageChannel -> messageChannel.createMessage("Link Spotify ID: " +
-														item.getAdded_by()
-																.getId() + " to a Discord ID first!"));
-									}
-
-									fields.add(EmbedCreateFields.Field.of(emojisss[atEmbed.get()] + " " + item.getTrack()
-													.getName(),
-											item.getTrack()
-													.getAlbum()
-													.getAllArtists(),
-											true));
-
-									if(atEmbed.get() % 2 == 1)
-										fields.add(EmbedCreateFields.Field.of("\u200b", "\u200b", true));
-
-									UserTrack userTrack = new UserTrack(item.getAdded_by()
-											.getId(),
-											getUser(item.getAdded_by()
-													.getId(), accesstoken),
-											item.getTrack()
-													.getId(),
-											item.getTrack()
-													.getName(),
-											item.getTrack()
-													.getAlbum()
-													.getAllArtists());
-
-									//System.out.println("UserTrack: " + userTrack);
-
-									songReaction.put(emojisss[atEmbed.get()], userTrack);
-
-									Song song_ = songRepository.getSongBySpotifyIdAndDeleted(item.getTrack()
-											.getId(), false);
-
-									if(song_ == null) {
-										song_ = new Song(guild,
-												item.getTrack()
-												.getName(),
-												item.getTrack()
-														.getId(),
-												item.getTrack()
-														.getAlbum()
-														.getAllArtists(),
-												user,
-												false);
-										songRepository.save(song_);
-									}
-
-									contestTracks.add(new ContestTrack(contest_,
-											guild,
-											song_,
-											emojisss[atEmbed.get()],
-											0,
-											false));
-
-									atEmbed.getAndIncrement();
-								}
-
-								contestTrackRepository.saveAll(contestTracks);
 
 								discord4j.core.object.entity.Guild discord_guild = message.getGuild()
 										.block();
@@ -1059,235 +991,47 @@ public class SpotifyBestSongWeeklyPoll implements CommandLineRunner {
 								if(discord_guild == null)
 									return Mono.empty();
 
-								boolean role_ = guild.getRoleId() != null && guild.getRoleId() != 0;
+								String mess_react = content[1];
+								String count = content[2];
 
-								Role role = role_ ? discord_guild.getRoleById(Snowflake.of(guild.getRoleId()))
-										.block() : null;
+								long messid_react;
 
-								if(role == null && role_)
+								try {
+									messid_react = Long.parseLong(mess_react);
+								} catch(NumberFormatException e) {
+									return message.getChannel()
+											.flatMap(messageChannel -> messageChannel.createMessage("Insert correct ID!"));
+								}
+
+								int count_react;
+
+								try {
+									count_react = Integer.parseInt(count);
+								} catch(NumberFormatException e) {
 									return message.getChannel()
 											.flatMap(messageChannel -> messageChannel.createMessage(
-													"Role not found with saved ID"));
+													"Insert correct number of reactions!"));
+								}
 
-								//System.out.println(songReaction);
+								Message message_react = channel.getMessageById(Snowflake.of(messid_react))
+										.block();
 
-								EmbedCreateSpec embed = EmbedCreateSpec.builder()
-										.title("Weekly poll")
-										.author(EmbedCreateFields.Author.of("Emanuele Melini",
-												"https://github.com/EmanueleMelini",
-												"https://avatars.githubusercontent.com/u/73402425?v=4"))
-										.color(Color.GREEN)
-										.description((role_ ? role.getMention() + "\n" : "") +
-												"Votazione settimanale della miglior canzone nella playlist di EXP!\nRegole:\n - Si vota ogni mercoledì la canzone preferita più \"originale\"\n - Chi vince una votazione ha la possibilità di inserire una canzone aggiuntiva al prossimo inserimento\n - Le canzoni inserite dal vincitore della settimana precedente non possono essere votate")
-										.addAllFields(fields)
-										.thumbnail(thumbnail)
-										.url(href)
-										.timestamp(Instant.now())
-										.build();
+								if(message_react == null)
+									return message.getChannel()
+											.flatMap(messageChannel -> messageChannel.createMessage(
+													"No message found with given ID!"));
+
+								List<Integer> uselessList = new LinkedList<>();
+
+								for(int i = 0; i < count_react; i++) {
+									uselessList.add(i);
+								}
 
 								AtomicInteger atCount = new AtomicInteger(0);
 
-								Contest finalContest = contestRepository.getContestById(contest_.getId());
+								return Mono.from(Flux.fromStream(uselessList.stream())
+										.flatMap(ignored -> message_react.addReaction(ReactionEmoji.unicode(emojisss[atCount.getAndIncrement()]))));
 
-								return Mono.from(channel.createMessage(MessageCreateSpec.create()
-												.withEmbeds(embed)
-												.withAllowedMentions(AllowedMentions.builder()
-														.allowRole(role_ ? role.getId() : Snowflake.of(0))
-														.build()))
-										.flatMap(msg -> {
-											messID = msg.getId();
-											finalContest.setMess(messID.asLong());
-											contestRepository.save(finalContest);
-											return Mono.from(Flux.fromIterable(itemsFiltered)
-													.flatMap(track -> msg.addReaction(ReactionEmoji.unicode(emojisss[atCount.getAndIncrement()]))));
-										}));
-							})
-							.then();
-
-
-					Mono<Void> close = gatewayDiscordClient.on(MessageCreateEvent.class, event -> {
-
-								if(!event.getMessage()
-										.getContent()
-										.split(" ")[0].equalsIgnoreCase("!closelegacy"))
-									return Mono.empty();
-
-								Message message = event.getMessage();
-								MessageChannel channel = message.getChannel()
-										.block();
-
-								if(channel == null)
-									return Mono.empty();
-
-								if(messID == null)
-									return channel.createMessage("Start contest first!");
-
-								Message contest_message = channel.getMessageById(messID)
-										.block();
-
-								if(contest_message == null)
-									return channel.createMessage("No contest found, internal error");
-
-								if(contest_message.getReactions()
-										.stream()
-										.noneMatch(Reaction::selfReacted))
-									return channel.createMessage("Contest already closed!");
-
-								boolean testClose = false;
-								if(message.getContent()
-										.split(" ").length == 2)
-									if(message.getContent()
-											.split(" ")[1].equalsIgnoreCase("-t"))
-										testClose = true;
-
-								List<Reaction> reactions = contest_message.getReactions();
-
-								Map<UserTrack, Integer> top = new HashMap<>();
-								LinkedHashMap<UserTrack, Integer> topSorted = new LinkedHashMap<>();
-
-								for(Reaction reaction : reactions) {
-									if(reaction.selfReacted()) {
-										Optional<String> opt = reaction.getEmoji()
-												.asUnicodeEmoji()
-												.map(ReactionEmoji.Unicode::getRaw);
-										String rawUnicode = opt.orElse("");
-										UserTrack userTrack = songReaction.get(rawUnicode);
-										Integer count = reaction.getCount();
-
-										top.put(userTrack, count);
-
-										//System.out.println(userTrack.toString());
-
-									}
-								}
-
-								top.entrySet()
-										.stream()
-										.sorted(Map.Entry.comparingByValue(Comparator.reverseOrder()))
-										.forEachOrdered(x -> topSorted.put(x.getKey(), x.getValue()));
-
-								Integer count_win = topSorted.entrySet()
-										.iterator()
-										.next()
-										.getValue();
-
-								LinkedHashMap<UserTrack, Integer> tieMap = new LinkedHashMap<>();
-
-								topSorted.entrySet()
-										.stream()
-										.filter(x -> x.getValue()
-												.equals(count_win))
-										.forEach(x -> tieMap.put(x.getKey(), x.getValue()));
-
-								contest_message.removeAllReactions()
-										.block();
-
-								AtomicInteger atTie = new AtomicInteger(0);
-
-								if(tieMap.entrySet()
-										.size() > 1) {
-									songReaction.clear();
-									tieMap.forEach((userTrack, votes) -> {
-										songReaction.put(emojisss[atTie.getAndIncrement()], userTrack);
-									});
-									tieMessID = messID;
-									return channel.createMessage("Contest ended with a tie, start tiebreaker with !tie.");
-								}
-
-								String thumbnail = playlistSpecThis.getImages()
-										.get(0)
-										.getUrl();
-
-								String href = playlistSpecThis.getExternal_urls()
-										.getSpotify();
-
-								List<EmbedCreateFields.Field> fields = new LinkedList<>();
-
-								topSorted.forEach((key, value) -> fields.add(EmbedCreateFields.Field.of(
-										key.getTrackName() + " - " + key.getTrackAuthors(),
-										key.getSpotifyUserName() + " - Voti: " + (value - 1),
-										false)));
-
-								UserTrack userWinner = topSorted.entrySet()
-										.iterator()
-										.next()
-										.getKey();
-
-								String winner_id = userWinner.getSpotifyUserID();
-
-								User user = userRepository.getUserBySpotifyIdAndDeleted(winner_id, false);
-								if(user == null) {
-									return channel.createMessage("Found Spotify ID: " + winner_id + " unlinked!");
-								}
-
-								discord4j.core.object.entity.Guild discord_guild = message.getGuild()
-										.block();
-
-								if(discord_guild == null)
-									return Mono.empty();
-
-								Member winner_d = discord_guild.getMemberById(Snowflake.of(user.getDiscordId()))
-										.block();
-
-								if(winner_d == null)
-									return channel.createMessage("Discord User not found with saved Discord ID!");
-
-								Guild guild = guildRepository.getGuildByGuildIdAndDeleted(contest_message.getGuildId()
-										.get()
-										.asLong(), false);
-
-								if(guild == null) {
-									guild = new Guild(contest_message.getGuildId()
-											.get()
-											.asLong(), false);
-									guildRepository.save(guild);
-								}
-
-								boolean role_ = guild.getRoleId() != null && guild.getRoleId() != 0;
-
-								Role role = role_ ? discord_guild.getRoleById(Snowflake.of(guild.getRoleId()))
-										.block() : null;
-
-								if(role == null && role_)
-									return channel.createMessage("Role not found with saved ID");
-
-								EmbedCreateSpec embed = EmbedCreateSpec.builder()
-										.title("Weekly poll" + (testClose ? " **[Test]**" : ""))
-										.author(EmbedCreateFields.Author.of("Emanuele Melini",
-												"https://github.com/EmanueleMelini",
-												"https://avatars.githubusercontent.com/u/73402425?v=4"))
-										.color(Color.GREEN)
-										.description((role_ ? role.getMention() + "\n" : "") + "Risultati contest:\n")
-										.addAllFields(fields)
-										.addField(EmbedCreateFields.Field.of("\u200b", "\u200b", false))
-										.addField(EmbedCreateFields.Field.of(
-												"Il vicitore del contest è: **" + winner_d.getDisplayName() +
-														"**!\nRicorda che hai diritto a inserire ben due canzoni domani!",
-												"\u200b",
-												true))
-										.thumbnail(thumbnail)
-										.url(href)
-										.timestamp(Instant.now())
-										.build();
-
-								if(winnerRepository.getWinnersByUserAndDeleted(user, false)
-										.isEmpty()) {
-									Winner winner = new Winner(guild,
-											getUser(winner_id, loginSpotify().getAccess_token()),
-											user,
-											LocalDateTime.now());
-									if(!testClose)
-										winnerRepository.save(winner);
-								}
-
-								messID = null;
-
-								return channel.createMessage(MessageCreateSpec.create()
-										.withEmbeds(embed)
-										.withAllowedMentions(AllowedMentions.builder()
-												.allowUser(winner_d.getId())
-												.allowRole(role_ ? role.getId() : Snowflake.of(0))
-												.build()));
 							})
 							.then();
 
@@ -1476,11 +1220,433 @@ public class SpotifyBestSongWeeklyPoll implements CommandLineRunner {
 							})
 							.then();
 
+					Mono<Void> contest = gatewayDiscordClient.on(MessageCreateEvent.class, event -> {
+
+								if(!event.getMessage()
+										.getContent()
+										.split(" ")[0].equalsIgnoreCase("!contestlegacy"))
+									return Mono.empty();
+
+								Message message = event.getMessage();
+
+								if(messID != null)
+									return message.getChannel()
+											.flatMap(messageChannel -> messageChannel.createMessage(
+													"There is already a contest!"));
+
+								String[] command = message.getContent()
+										.split(" ");
+								MessageChannel channel = message.getChannel()
+										.block();
+
+								if(channel == null)
+									return Mono.empty();
+
+								String playlist;
+
+								if(command.length < 2)
+									return message.getChannel()
+											.flatMap(messageChannel -> messageChannel.createMessage("Insert playlist id!"));
+
+								playlist = command[1];
+
+								Playlist playlistMapped = getPlaylist(playlist);
+
+								PlaylistSpec playlistSpecMapped = getPlaylistSpec(playlist);
+
+								String thumbnail = playlistSpecMapped.getImages()
+										.get(0)
+										.getUrl();
+
+								String href = playlistSpecMapped.getExternal_urls()
+										.getSpotify();
+
+								playlistSpecThis = playlistSpecMapped;
+								playlistThis = playlist;
+
+								List<EmbedCreateFields.Field> fields = new LinkedList<>();
+
+								AtomicInteger atEmbed = new AtomicInteger(0);
+
+								//TODO: check messaggi di errore nelle chiamate (es playlist ID non valido/trovato)
+
+								DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+
+								Guild guild = guildRepository.getGuildByGuildIdAndDeleted(message.getGuildId()
+										.get()
+										.asLong(), false);
+
+								if(guild == null) {
+									guild = new Guild(message.getGuildId()
+											.get()
+											.asLong(), false);
+									guildRepository.save(guild);
+								}
+
+								ContestDay contestDay = contestDayRepository.getContestDayByGuildAndDeleted(guild, false);
+
+								if(contestDay == null)
+									return message.getChannel()
+											.flatMap(messageChannel -> messageChannel.createMessage("Insert Contest Day!"));
+
+								Winner lastWinner = winnerRepository.findTopByGuildAndDeletedOrderByWinnerDateDesc(guild,
+										false);
+								String last_winner;
+
+								if(lastWinner != null) {
+									if(!lastWinner.getWinnerDate()
+											.withHour(23)
+											.withMinute(59)
+											.withSecond(59)
+											.isBefore(LocalDateTime.now()
+													.withHour(0)
+													.withMinute(0)
+													.withSecond(1)
+													.minusDays(7))) {
+										last_winner = lastWinner.getUser()
+												.getSpotifyId();
+									} else
+										last_winner = "";
+								} else
+									last_winner = "";
+
+								System.out.println("Last winner: " + last_winner);
+
+								final List<Items> itemsFiltered = playlistMapped.getItems()
+										.stream()
+										.filter(item -> checkDate(LocalDateTime.parse(item.getAdded_at()
+														.replace("T", " ")
+														.replace("Z", ""), formatter),
+												contestDay.getDay()
+														.getValue(),
+												item.getTrack()
+														.getName()))
+										.filter(item -> !item.getAdded_by()
+												.getId()
+												.equalsIgnoreCase(last_winner))
+										.collect(Collectors.toList());
+
+								String accesstoken = loginSpotify().getAccess_token();
+
+								List<ContestTrack> contestTracks = new LinkedList<>();
+
+								Contest contest_ = new Contest(guild,
+										LocalDateTime.now()
+												.withHour(1)
+												.withMinute(0)
+												.withSecond(0),
+										false);
+
+								contest_ = contestRepository.save(contest_);
+
+								for(Items item : itemsFiltered) {
+
+									User user = userRepository.getUserBySpotifyIdAndDeleted(item.getAdded_by()
+											.getId(), false);
+									if(user == null) {
+										return message.getChannel()
+												.flatMap(messageChannel -> messageChannel.createMessage("Link Spotify ID: " +
+														item.getAdded_by()
+																.getId() + " to a Discord ID first!"));
+									}
+
+									fields.add(EmbedCreateFields.Field.of(emojisss[atEmbed.get()] + " " + item.getTrack()
+													.getName(),
+											item.getTrack()
+													.getAlbum()
+													.getAllArtists(),
+											true));
+
+									if(atEmbed.get() % 2 == 1)
+										fields.add(EmbedCreateFields.Field.of("\u200b", "\u200b", true));
+
+									UserTrack userTrack = new UserTrack(item.getAdded_by()
+											.getId(),
+											getUser(item.getAdded_by()
+													.getId(), accesstoken),
+											item.getTrack()
+													.getId(),
+											item.getTrack()
+													.getName(),
+											item.getTrack()
+													.getAlbum()
+													.getAllArtists());
+
+									//System.out.println("UserTrack: " + userTrack);
+
+									songReaction.put(emojisss[atEmbed.get()], userTrack);
+
+									Song song_ = songRepository.getSongBySpotifyIdAndDeleted(item.getTrack()
+											.getId(), false);
+
+									if(song_ == null) {
+										song_ = new Song(guild,
+												item.getTrack()
+														.getName(),
+												item.getTrack()
+														.getId(),
+												item.getTrack()
+														.getAlbum()
+														.getAllArtists(),
+												user,
+												false);
+										songRepository.save(song_);
+									}
+
+									contestTracks.add(new ContestTrack(contest_,
+											guild,
+											song_,
+											emojisss[atEmbed.get()],
+											0,
+											false));
+
+									atEmbed.getAndIncrement();
+								}
+
+								contestTrackRepository.saveAll(contestTracks);
+
+								discord4j.core.object.entity.Guild discord_guild = message.getGuild()
+										.block();
+
+								if(discord_guild == null)
+									return Mono.empty();
+
+								boolean role_ = guild.getRoleId() != null && guild.getRoleId() != 0;
+
+								Role role = role_ ? discord_guild.getRoleById(Snowflake.of(guild.getRoleId()))
+										.block() : null;
+
+								if(role == null && role_)
+									return message.getChannel()
+											.flatMap(messageChannel -> messageChannel.createMessage(
+													"Role not found with saved ID"));
+
+								//System.out.println(songReaction);
+
+								EmbedCreateSpec embed = EmbedCreateSpec.builder()
+										.title("Weekly poll")
+										.author(EmbedCreateFields.Author.of("Emanuele Melini",
+												"https://github.com/EmanueleMelini",
+												"https://avatars.githubusercontent.com/u/73402425?v=4"))
+										.color(Color.GREEN)
+										.description((role_ ? role.getMention() + "\n" : "") +
+												"Votazione settimanale della miglior canzone nella playlist di EXP!\nRegole:\n - Si vota ogni mercoledì la canzone preferita più \"originale\"\n - Chi vince una votazione ha la possibilità di inserire una canzone aggiuntiva al prossimo inserimento\n - Le canzoni inserite dal vincitore della settimana precedente non possono essere votate")
+										.addAllFields(fields)
+										.thumbnail(thumbnail)
+										.url(href)
+										.timestamp(Instant.now())
+										.build();
+
+								AtomicInteger atCount = new AtomicInteger(0);
+
+								Contest finalContest = contestRepository.getContestById(contest_.getId());
+
+								return Mono.from(channel.createMessage(MessageCreateSpec.create()
+												.withEmbeds(embed)
+												.withAllowedMentions(AllowedMentions.builder()
+														.allowRole(role_ ? role.getId() : Snowflake.of(0))
+														.build()))
+										.flatMap(msg -> {
+											messID = msg.getId();
+											finalContest.setMess(messID.asLong());
+											contestRepository.save(finalContest);
+											return Mono.from(Flux.fromIterable(itemsFiltered)
+													.flatMap(track -> msg.addReaction(ReactionEmoji.unicode(emojisss[atCount.getAndIncrement()]))));
+										}));
+							})
+							.then();
+
+					Mono<Void> close = gatewayDiscordClient.on(MessageCreateEvent.class, event -> {
+
+								if(!event.getMessage()
+										.getContent()
+										.split(" ")[0].equalsIgnoreCase("!closelegacy"))
+									return Mono.empty();
+
+								Message message = event.getMessage();
+								MessageChannel channel = message.getChannel()
+										.block();
+
+								if(channel == null)
+									return Mono.empty();
+
+								if(messID == null)
+									return channel.createMessage("Start contest first!");
+
+								Message contest_message = channel.getMessageById(messID)
+										.block();
+
+								if(contest_message == null)
+									return channel.createMessage("No contest found, internal error");
+
+								if(contest_message.getReactions()
+										.stream()
+										.noneMatch(Reaction::selfReacted))
+									return channel.createMessage("Contest already closed!");
+
+								boolean testClose = false;
+								if(message.getContent()
+										.split(" ").length == 2)
+									if(message.getContent()
+											.split(" ")[1].equalsIgnoreCase("-t"))
+										testClose = true;
+
+								List<Reaction> reactions = contest_message.getReactions();
+
+								Map<UserTrack, Integer> top = new HashMap<>();
+								LinkedHashMap<UserTrack, Integer> topSorted = new LinkedHashMap<>();
+
+								for(Reaction reaction : reactions) {
+									if(reaction.selfReacted()) {
+										Optional<String> opt = reaction.getEmoji()
+												.asUnicodeEmoji()
+												.map(ReactionEmoji.Unicode::getRaw);
+										String rawUnicode = opt.orElse("");
+										UserTrack userTrack = songReaction.get(rawUnicode);
+										Integer count = reaction.getCount();
+
+										top.put(userTrack, count);
+
+										//System.out.println(userTrack.toString());
+
+									}
+								}
+
+								top.entrySet()
+										.stream()
+										.sorted(Map.Entry.comparingByValue(Comparator.reverseOrder()))
+										.forEachOrdered(x -> topSorted.put(x.getKey(), x.getValue()));
+
+								Integer count_win = topSorted.entrySet()
+										.iterator()
+										.next()
+										.getValue();
+
+								LinkedHashMap<UserTrack, Integer> tieMap = new LinkedHashMap<>();
+
+								topSorted.entrySet()
+										.stream()
+										.filter(x -> x.getValue()
+												.equals(count_win))
+										.forEach(x -> tieMap.put(x.getKey(), x.getValue()));
+
+								contest_message.removeAllReactions()
+										.block();
+
+								AtomicInteger atTie = new AtomicInteger(0);
+
+								if(tieMap.entrySet()
+										.size() > 1) {
+									songReaction.clear();
+									tieMap.forEach((userTrack, votes) -> {
+										songReaction.put(emojisss[atTie.getAndIncrement()], userTrack);
+									});
+									tieMessID = messID;
+									return channel.createMessage("Contest ended with a tie, start tiebreaker with !tie.");
+								}
+
+								String thumbnail = playlistSpecThis.getImages()
+										.get(0)
+										.getUrl();
+
+								String href = playlistSpecThis.getExternal_urls()
+										.getSpotify();
+
+								List<EmbedCreateFields.Field> fields = new LinkedList<>();
+
+								topSorted.forEach((key, value) -> fields.add(EmbedCreateFields.Field.of(
+										key.getTrackName() + " - " + key.getTrackAuthors(),
+										key.getSpotifyUserName() + " - Voti: " + (value - 1),
+										false)));
+
+								UserTrack userWinner = topSorted.entrySet()
+										.iterator()
+										.next()
+										.getKey();
+
+								String winner_id = userWinner.getSpotifyUserID();
+
+								User user = userRepository.getUserBySpotifyIdAndDeleted(winner_id, false);
+								if(user == null) {
+									return channel.createMessage("Found Spotify ID: " + winner_id + " unlinked!");
+								}
+
+								discord4j.core.object.entity.Guild discord_guild = message.getGuild()
+										.block();
+
+								if(discord_guild == null)
+									return Mono.empty();
+
+								Member winner_d = discord_guild.getMemberById(Snowflake.of(user.getDiscordId()))
+										.block();
+
+								if(winner_d == null)
+									return channel.createMessage("Discord User not found with saved Discord ID!");
+
+								Guild guild = guildRepository.getGuildByGuildIdAndDeleted(contest_message.getGuildId()
+										.get()
+										.asLong(), false);
+
+								if(guild == null) {
+									guild = new Guild(contest_message.getGuildId()
+											.get()
+											.asLong(), false);
+									guildRepository.save(guild);
+								}
+
+								boolean role_ = guild.getRoleId() != null && guild.getRoleId() != 0;
+
+								Role role = role_ ? discord_guild.getRoleById(Snowflake.of(guild.getRoleId()))
+										.block() : null;
+
+								if(role == null && role_)
+									return channel.createMessage("Role not found with saved ID");
+
+								EmbedCreateSpec embed = EmbedCreateSpec.builder()
+										.title("Weekly poll" + (testClose ? " **[Test]**" : ""))
+										.author(EmbedCreateFields.Author.of("Emanuele Melini",
+												"https://github.com/EmanueleMelini",
+												"https://avatars.githubusercontent.com/u/73402425?v=4"))
+										.color(Color.GREEN)
+										.description((role_ ? role.getMention() + "\n" : "") + "Risultati contest:\n")
+										.addAllFields(fields)
+										.addField(EmbedCreateFields.Field.of("\u200b", "\u200b", false))
+										.addField(EmbedCreateFields.Field.of(
+												"Il vicitore del contest è: **" + winner_d.getDisplayName() +
+														"**!\nRicorda che hai diritto a inserire ben due canzoni domani!",
+												"\u200b",
+												true))
+										.thumbnail(thumbnail)
+										.url(href)
+										.timestamp(Instant.now())
+										.build();
+
+								if(winnerRepository.getWinnersByUserAndDeleted(user, false)
+										.isEmpty()) {
+									Winner winner = new Winner(guild,
+											getUser(winner_id, loginSpotify().getAccess_token()),
+											user,
+											LocalDateTime.now());
+									if(!testClose)
+										winnerRepository.save(winner);
+								}
+
+								messID = null;
+
+								return channel.createMessage(MessageCreateSpec.create()
+										.withEmbeds(embed)
+										.withAllowedMentions(AllowedMentions.builder()
+												.allowUser(winner_d.getId())
+												.allowRole(role_ ? role.getId() : Snowflake.of(0))
+												.build()));
+							})
+							.then();
+
 					Mono<Void> force_stop = gatewayDiscordClient.on(MessageCreateEvent.class, event -> {
 
 								if(!event.getMessage()
 										.getContent()
-										.split(" ")[0].equalsIgnoreCase("!forcestop"))
+										.split(" ")[0].equalsIgnoreCase("!forcestoplegacy"))
 									return Mono.empty();
 
 								Message message = event.getMessage();
@@ -1512,7 +1678,7 @@ public class SpotifyBestSongWeeklyPoll implements CommandLineRunner {
 
 								if(!event.getMessage()
 										.getContent()
-										.split(" ")[0].equalsIgnoreCase("!tie"))
+										.split(" ")[0].equalsIgnoreCase("!tielegacy"))
 									return Mono.empty();
 
 								Message message = event.getMessage();
@@ -1631,93 +1797,22 @@ public class SpotifyBestSongWeeklyPoll implements CommandLineRunner {
 							})
 							.then();
 
-					Mono<Void> addReaction = gatewayDiscordClient.on(MessageCreateEvent.class, event -> {
-
-								if(!event.getMessage()
-										.getContent()
-										.split(" ")[0].equalsIgnoreCase("!react"))
-									return Mono.empty();
-
-								Message message = event.getMessage();
-								String[] content = message.getContent()
-										.split(" ");
-
-								if(content.length < 3)
-									return message.getChannel()
-											.flatMap(messageChannel -> messageChannel.createMessage(
-													"Insert message ID and reaction number!"));
-
-								MessageChannel channel = message.getChannel()
-										.block();
-
-								if(channel == null)
-									return Mono.empty();
-
-								discord4j.core.object.entity.Guild discord_guild = message.getGuild()
-										.block();
-
-								if(discord_guild == null)
-									return Mono.empty();
-
-								String mess_react = content[1];
-								String count = content[2];
-
-								long messid_react;
-
-								try {
-									messid_react = Long.parseLong(mess_react);
-								} catch(NumberFormatException e) {
-									return message.getChannel()
-											.flatMap(messageChannel -> messageChannel.createMessage("Insert correct ID!"));
-								}
-
-								int count_react;
-
-								try {
-									count_react = Integer.parseInt(count);
-								} catch(NumberFormatException e) {
-									return message.getChannel()
-											.flatMap(messageChannel -> messageChannel.createMessage(
-													"Insert correct number of reactions!"));
-								}
-
-								Message message_react = channel.getMessageById(Snowflake.of(messid_react))
-										.block();
-
-								if(message_react == null)
-									return message.getChannel()
-											.flatMap(messageChannel -> messageChannel.createMessage(
-													"No message found with given ID!"));
-
-								List<Integer> uselessList = new LinkedList<>();
-
-								for(int i = 0; i < count_react; i++) {
-									uselessList.add(i);
-								}
-
-								AtomicInteger atCount = new AtomicInteger(0);
-
-								return Mono.from(Flux.fromStream(uselessList.stream())
-										.flatMap(ignored -> message_react.addReaction(ReactionEmoji.unicode(emojisss[atCount.getAndIncrement()]))));
-
-							})
-							.then();
-
 					return testBot.and(contest)
-							.and(print)
 							.and(close)
+							.and(tie_breaker)
+							.and(force_stop)
 							.and(contest_day)
 							.and(link_discord)
 							.and(role_discord)
-							.and(force_stop)
-							.and(tie_breaker)
-							.and(disconnectLennosc)
-							.and(kickLennosc)
+							.and(addReaction)
+							.and(link_playlist)
+							.and(contestDB)
+							.and(closedb)
 							.and(reactionAddEvent)
 							.and(reactionRemoveEvent)
-							.and(contestDB)
-							.and(addReaction)
-							.and(playlist_id);
+							.and(print)
+							.and(disconnectLennosc)
+							.and(kickLennosc);
 				});
 		client.block();
 
@@ -2009,7 +2104,8 @@ public class SpotifyBestSongWeeklyPoll implements CommandLineRunner {
 				.isBefore(date);
 	}
 
-	public List<EmbedCreateFields.Field> createUpdatedEmbed(List<ContestTrack> contestTracks) throws IllegalArgumentException {
+	public List<EmbedCreateFields.Field> createUpdatedEmbed(
+			List<ContestTrack> contestTracks) throws IllegalArgumentException {
 
 		List<EmbedCreateFields.Field> fields = new LinkedList<>();
 
