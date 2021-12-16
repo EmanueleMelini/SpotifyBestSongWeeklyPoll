@@ -1740,6 +1740,7 @@ public class SpotifyBestSongWeeklyPoll implements CommandLineRunner {
 
 									//System.out.println("UserTrack: " + userTrack);
 
+									//TODO: check aumenta 2 volte
 									atEmbed.getAndIncrement();
 								});
 
