@@ -723,6 +723,53 @@ public class SpotifyBestSongWeeklyPoll implements CommandLineRunner {
 							})
 							.then();
 
+					Mono<Void> setOffset = gatewayDiscordClient.on(MessageCreateEvent.class, event -> {
+
+								if(!event.getMessage()
+										.getContent()
+										.split(" ")[0].equalsIgnoreCase("!offset"))
+									return Mono.empty();
+
+								if(event.getMessage()
+										.getContent()
+										.split(" ").length < 2)
+									return event.getMessage()
+											.getChannel()
+											.flatMap(messageChannel -> messageChannel.createMessage("Insert offset!"));
+
+								Integer offset;
+								try {
+									offset = Integer.parseInt(event.getMessage()
+											.getContent()
+											.split(" ")[1]);
+								} catch(Exception e) {
+									return event.getMessage()
+											.getChannel()
+											.flatMap(messageChannel -> messageChannel.createMessage(
+													"Insert valid number offset!"));
+								}
+
+								discord4j.core.object.entity.Guild discord_guild = event.getMessage().getGuild().block();
+
+								if(discord_guild == null)
+									return Mono.empty();
+
+								Guild guild = guildRepository.getGuildByGuildIdAndDeleted(discord_guild.getId().asLong(), false);
+
+								if(guild == null)
+									guild = new Guild(discord_guild.getId().asLong(), false);
+
+								guild.setOffset_spotify(offset);
+
+								guildRepository.save(guild);
+
+								return event.getMessage()
+										.getChannel()
+										.flatMap(messageChannel -> messageChannel.createMessage("Offset inserted correctly!"));
+
+							})
+							.then();
+
 					Mono<Void> contestDB = gatewayDiscordClient.on(MessageCreateEvent.class, event -> {
 
 								if(!event.getMessage()
@@ -778,7 +825,7 @@ public class SpotifyBestSongWeeklyPoll implements CommandLineRunner {
 
 								String playlist = playlist_.getSpotifyId();
 
-								Playlist playlistMapped = getPlaylist(playlist);
+								Playlist playlistMapped = getPlaylist(playlist, guild.getOffset_spotify());
 
 								PlaylistSpec playlistSpecMapped = getPlaylistSpec(playlist);
 
@@ -1273,7 +1320,11 @@ public class SpotifyBestSongWeeklyPoll implements CommandLineRunner {
 
 								playlist = command[1];
 
-								Playlist playlistMapped = getPlaylist(playlist);
+								Guild guild = guildRepository.getGuildByGuildIdAndDeleted(message.getGuildId()
+										.get()
+										.asLong(), false);
+
+								Playlist playlistMapped = getPlaylist(playlist, guild.getOffset_spotify());
 
 								PlaylistSpec playlistSpecMapped = getPlaylistSpec(playlist);
 
@@ -1295,9 +1346,6 @@ public class SpotifyBestSongWeeklyPoll implements CommandLineRunner {
 
 								DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
-								Guild guild = guildRepository.getGuildByGuildIdAndDeleted(message.getGuildId()
-										.get()
-										.asLong(), false);
 
 								if(guild == null) {
 									guild = new Guild(message.getGuildId()
@@ -1635,6 +1683,8 @@ public class SpotifyBestSongWeeklyPoll implements CommandLineRunner {
 								if(role == null && role_)
 									return channel.createMessage("Role not found with saved ID");
 
+								String winner_name = winner_d.getDisplayName() + " (" + winner_d.getUsername() + ")";
+
 								EmbedCreateSpec embed = EmbedCreateSpec.builder()
 										.title("Weekly poll" + (testClose ? " **[Test]**" : ""))
 										.author(EmbedCreateFields.Author.of("Emanuele Melini",
@@ -1645,7 +1695,7 @@ public class SpotifyBestSongWeeklyPoll implements CommandLineRunner {
 										.addAllFields(fields)
 										.addField(EmbedCreateFields.Field.of("\u200b", "\u200b", false))
 										.addField(EmbedCreateFields.Field.of(
-												"Il vicitore del contest è: **" + winner_d.getDisplayName() +
+												"Il vicitore del contest è: **" + winner_name +
 														"**!\nRicorda che hai diritto a inserire ben due canzoni domani!",
 												"\u200b",
 												true))
@@ -1654,14 +1704,16 @@ public class SpotifyBestSongWeeklyPoll implements CommandLineRunner {
 										.timestamp(Instant.now())
 										.build();
 
+								/*
 								if(winnerRepository.getWinnersByUserAndDeleted(user, false)
 										.isEmpty()) {
+								 */
+								if(!testClose) {
 									Winner winner = new Winner(guild,
 											getUser(winner_id, loginSpotify().getAccess_token()),
 											user,
 											LocalDateTime.now());
-									if(!testClose)
-										winnerRepository.save(winner);
+									winnerRepository.save(winner);
 								}
 
 								messID = null;
@@ -1840,6 +1892,7 @@ public class SpotifyBestSongWeeklyPoll implements CommandLineRunner {
 							.and(role_discord)
 							.and(addReaction)
 							.and(link_playlist)
+							.and(setOffset)
 							.and(contestDB)
 							.and(closedb)
 							.and(getMessID)
@@ -1859,7 +1912,7 @@ public class SpotifyBestSongWeeklyPoll implements CommandLineRunner {
 	 * @param playlist The Spotify playlist ID
 	 * @return A Playlist JSON Object that contains the Spotify call result
 	 */
-	public Playlist getPlaylist(String playlist) {
+	public Playlist getPlaylist(String playlist, Integer offset) {
 
 		ObjectMapper mapper = new ObjectMapper();
 		Playlist playlistMapped = new Playlist();
@@ -1871,7 +1924,7 @@ public class SpotifyBestSongWeeklyPoll implements CommandLineRunner {
 			// TODO: Cambiare da offset a loop di chiamate con next (https://developer.spotify.com/documentation/web-api/reference/#/operations/get-playlist)
 
 			URL urlPlaylist = new URL("https://api.spotify.com/v1/playlists/" + playlist +
-					"/tracks?fields=items(added_by.id,track.id,track.name,track.album.artists,added_at)&offset=100");
+					"/tracks?fields=items(added_by.id,track.id,track.name,track.album.artists,added_at)&offset=" + offset);
 			HttpURLConnection connPlaylist = (HttpURLConnection) urlPlaylist.openConnection();
 
 			connPlaylist.setRequestProperty("Authorization", "Bearer " + accessToken);

@@ -21,6 +21,9 @@ public class Guild {
 	@Column(name = "deleted")
 	private boolean deleted;
 
+	@Column(name = "offset_spotify")
+	private Integer offset_spotify;
+
 	@OneToMany(mappedBy = "guild")
 	private Set<Winner> winners;
 
@@ -66,6 +69,14 @@ public class Guild {
 
 	public void setDeleted(boolean deleted) {
 		this.deleted = deleted;
+	}
+
+	public Integer getOffset_spotify() {
+		return offset_spotify;
+	}
+
+	public void setOffset_spotify(Integer offset_spotify) {
+		this.offset_spotify = offset_spotify;
 	}
 
 	public Long getRoleId() {
