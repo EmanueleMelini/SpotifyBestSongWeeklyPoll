@@ -379,8 +379,17 @@ public class SpotifyBestSongWeeklyPoll implements CommandLineRunner {
 								long mess_ = check.get(0)
 										.getMess();
 
-								Message contest_mess = channel.getMessageById(Snowflake.of(mess_))
-										.block();
+								Message contest_mess;
+
+								try {
+
+									contest_mess = channel.getMessageById(Snowflake.of(mess_))
+											.block();
+
+								} catch(Exception e) {
+									System.out.println("ERROR--------- MESSID: " + messID != null ? messID : "NULL");
+									return Mono.empty();
+								}
 
 								if(contest_mess == null)
 									return channel.createMessage("Internal error!");
@@ -697,6 +706,20 @@ public class SpotifyBestSongWeeklyPoll implements CommandLineRunner {
 										.addEmbed(embed)
 										.build()));
 								//channel.createMessage(member.getDisplayName() + " - Vote removed!");
+							})
+							.then();
+
+					Mono<Void> getMessID = gatewayDiscordClient.on(MessageCreateEvent.class, event -> {
+
+								if(!event.getMessage()
+										.getContent()
+										.split(" ")[0].equalsIgnoreCase("!messid"))
+									return Mono.empty();
+
+								return event.getMessage()
+										.getChannel()
+										.flatMap(messageChannel -> messageChannel.createMessage("MessID: " + messID));
+
 							})
 							.then();
 
@@ -1328,6 +1351,7 @@ public class SpotifyBestSongWeeklyPoll implements CommandLineRunner {
 
 								String accesstoken = loginSpotify().getAccess_token();
 
+								/*
 								List<ContestTrack> contestTracks = new LinkedList<>();
 
 								Contest contest_ = new Contest(guild,
@@ -1338,6 +1362,7 @@ public class SpotifyBestSongWeeklyPoll implements CommandLineRunner {
 										false);
 
 								contest_ = contestRepository.save(contest_);
+								*/
 
 								for(Items item : itemsFiltered) {
 
@@ -1393,17 +1418,21 @@ public class SpotifyBestSongWeeklyPoll implements CommandLineRunner {
 										songRepository.save(song_);
 									}
 
+									/*
 									contestTracks.add(new ContestTrack(contest_,
 											guild,
 											song_,
 											emojisss[atEmbed.get()],
 											0,
 											false));
+									 */
 
 									atEmbed.getAndIncrement();
 								}
 
+								/*
 								contestTrackRepository.saveAll(contestTracks);
+								 */
 
 								discord4j.core.object.entity.Guild discord_guild = message.getGuild()
 										.block();
@@ -1439,7 +1468,9 @@ public class SpotifyBestSongWeeklyPoll implements CommandLineRunner {
 
 								AtomicInteger atCount = new AtomicInteger(0);
 
+								/*
 								Contest finalContest = contestRepository.getContestById(contest_.getId());
+								 */
 
 								return Mono.from(channel.createMessage(MessageCreateSpec.create()
 												.withEmbeds(embed)
@@ -1448,8 +1479,10 @@ public class SpotifyBestSongWeeklyPoll implements CommandLineRunner {
 														.build()))
 										.flatMap(msg -> {
 											messID = msg.getId();
+											/*
 											finalContest.setMess(messID.asLong());
 											contestRepository.save(finalContest);
+											 */
 											return Mono.from(Flux.fromIterable(itemsFiltered)
 													.flatMap(track -> msg.addReaction(ReactionEmoji.unicode(emojisss[atCount.getAndIncrement()]))));
 										}));
@@ -1731,7 +1764,7 @@ public class SpotifyBestSongWeeklyPoll implements CommandLineRunner {
 								songReaction.forEach((reaction, userTrack) -> {
 
 									fields.add(EmbedCreateFields.Field.of(
-											emojisss[atEmbed.getAndIncrement()] + " " + userTrack.getTrackName(),
+											emojisss[atEmbed.get()] + " " + userTrack.getTrackName(),
 											userTrack.getTrackAuthors(),
 											true));
 
@@ -1809,6 +1842,7 @@ public class SpotifyBestSongWeeklyPoll implements CommandLineRunner {
 							.and(link_playlist)
 							.and(contestDB)
 							.and(closedb)
+							.and(getMessID)
 							.and(reactionAddEvent)
 							.and(reactionRemoveEvent)
 							.and(print)
@@ -1837,7 +1871,7 @@ public class SpotifyBestSongWeeklyPoll implements CommandLineRunner {
 			// TODO: Cambiare da offset a loop di chiamate con next (https://developer.spotify.com/documentation/web-api/reference/#/operations/get-playlist)
 
 			URL urlPlaylist = new URL("https://api.spotify.com/v1/playlists/" + playlist +
-					"/tracks?fields=items(added_by.id,track.id,track.name,track.album.artists,added_at)&offset=50");
+					"/tracks?fields=items(added_by.id,track.id,track.name,track.album.artists,added_at)&offset=100");
 			HttpURLConnection connPlaylist = (HttpURLConnection) urlPlaylist.openConnection();
 
 			connPlaylist.setRequestProperty("Authorization", "Bearer " + accessToken);
@@ -2062,6 +2096,8 @@ public class SpotifyBestSongWeeklyPoll implements CommandLineRunner {
 				.getValue() - contestDay;
 
 		days = days <= 0 ? days + 7 : days;
+		//TODO: DELETE
+		//days = days + 3;
 
 		/*
 		System.out.println("Song: " + song);
