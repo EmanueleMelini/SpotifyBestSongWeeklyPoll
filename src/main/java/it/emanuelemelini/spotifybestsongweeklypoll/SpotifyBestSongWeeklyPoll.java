@@ -230,7 +230,19 @@ public class SpotifyBestSongWeeklyPoll implements CommandLineRunner {
 												.getChannel()
 												.flatMap(channel -> channel.createMessage("Insert playlist"));
 
-									printAllPlaylist(command[1]);
+									Guild guild = guildRepository.getGuildByGuildIdAndDeleted(event.getMessage().getGuildId()
+											.get()
+											.asLong(), false);
+
+									if(guild == null) {
+										guild = new Guild(event.getMessage().getGuildId()
+												.get()
+												.asLong(), false);
+										guildRepository.save(guild);
+									}
+
+									printAllPlaylist(command[1], guild.getOffset_spotify());
+
 								}
 								return Mono.empty();
 							})
@@ -311,7 +323,7 @@ public class SpotifyBestSongWeeklyPoll implements CommandLineRunner {
 										false);
 
 								if(!playlists.isEmpty())
-									return channel.createMessage("You can pnly have one playlist active at once!");
+									return channel.createMessage("You can only have one playlist active at once!");
 
 								PlaylistSpec playlistSpec_ = getPlaylistSpec(content[1]);
 
@@ -2042,13 +2054,13 @@ public class SpotifyBestSongWeeklyPoll implements CommandLineRunner {
 	 *
 	 * @param playlist The Spotify Playlist ID
 	 */
-	public void printAllPlaylist(String playlist) {
+	public void printAllPlaylist(String playlist, Integer offset) {
 
 		try {
 
 			String accessTokenAll = loginSpotify().getAccess_token();
 
-			URL urlAll = new URL("https://api.spotify.com/v1/playlists/" + playlist);
+			URL urlAll = new URL("https://api.spotify.com/v1/playlists/" + playlist + "/tracks?offset=" + offset);
 			HttpURLConnection connAll = (HttpURLConnection) urlAll.openConnection();
 
 			connAll.setRequestProperty("Authorization", "Bearer " + accessTokenAll);
